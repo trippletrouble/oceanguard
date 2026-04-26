@@ -5,6 +5,7 @@ backend/app/__pycache__/
 backend/*.db
 backend/.env
 *.pyc
+tools/
 
 # Node
 frontend/node_modules/
@@ -14,3 +15,4 @@ frontend/dist/
 .vscode/
 .idea/
 firebase-service-account.json
+.snapshot-cache*

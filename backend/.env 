@@ -1,0 +1,14 @@
+# Server
+APP_NAME=OceanGuard
+DEBUG=true
+
+# JWT
+SECRET_KEY=***ENTFERNT***
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./oceanguard.db
+
+# APIs
+AISSTREAM_API_KEY=***ENTFERNT***

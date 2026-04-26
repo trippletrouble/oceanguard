@@ -1,0 +1,50 @@
+[
+  {
+    "id": "thunnus-thynnus",
+    "common_name": "Roter Thun",
+    "scientific_name": "Thunnus thynnus",
+    "region": "Mittelmeer / Ostatlantik",
+    "temp_min": 15.0,
+    "temp_max": 25.0,
+    "temp_mid": 20.0,
+    "temp_range": 10.0,
+    "radius_km": 200,
+    "active": true
+  },
+  {
+    "id": "gadus-morhua",
+    "common_name": "Atlantischer Kabeljau",
+    "scientific_name": "Gadus morhua",
+    "region": "Nordsee / Nordatlantik",
+    "temp_min": 2.0,
+    "temp_max": 10.0,
+    "temp_mid": 6.0,
+    "temp_range": 9.0,
+    "radius_km": 200,
+    "active": true
+  },
+  {
+    "id": "sardina-pilchardus",
+    "common_name": "Sardine",
+    "scientific_name": "Sardina pilchardus",
+    "region": "Europäische Atlantikküste",
+    "temp_min": 10.0,
+    "temp_max": 20.0,
+    "temp_mid": 15.0,
+    "temp_range": 10.0,
+    "radius_km": 200,
+    "active": true
+  },
+  {
+    "id": "xiphias-gladius",
+    "common_name": "Schwertfisch",
+    "scientific_name": "Xiphias gladius",
+    "region": "Mittelmeer / Atlantik",
+    "temp_min": 18.0,
+    "temp_max": 28.0,
+    "temp_mid": 23.0,
+    "temp_range": 10.0,
+    "radius_km": 200,
+    "active": true
+  }
+]

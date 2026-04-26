@@ -2,44 +2,48 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import firebase_admin.auth
+
 from app.database import get_db
-from app.auth.jwt import decode_access_token
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
-
+# OAuth2-Standard für den Professor. 
+# tokenUrl zeigt auf sync, damit Swagger den Pfad findet.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/sync")
 
 async def get_current_user(
-    token: ***ENTFERNT*** | None = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
+    token: ***ENTFERNT*** = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
 ) -> User:
-    if token is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    try:
+        # 1. Token direkt gegen Firebase prüfen
+        decoded_token = firebase_admin.auth.verify_id_token(token)
+        uid = decoded_token.get("uid")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid Token: {str(e)}"
+        )
 
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
-    user_id: int | None = payload.get("sub")
-    if user_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-
-    result = await db.execute(select(User).where(User.id == int(user_id)))
+    # 2. User in lokaler DB suchen
+    result = await db.execute(select(User).where(User.firebase_uid == uid))
     user = result.scalar_one_or_none()
 
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User verified but not synced to local database."
+        )
 
     return user
 
-
-def require_role(required_role: str):
-    """Dependency-Factory: gibt 403 wenn der User nicht die richtige Rolle hat."""
-    async def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role != required_role and current_user.role != "admin":
+def require_role(role: str):
+    """Factory für Rollen-Prüfung (z.B. für Admin-Bereiche)."""
+    async def role_checker(user: User = Depends(get_current_user)) -> User:
+        if user.role != role and user.role != "admin":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{required_role}' required",
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Access denied"
             )
-        return current_user
+        return user
     return role_checker
