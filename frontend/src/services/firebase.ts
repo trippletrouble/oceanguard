@@ -1,5 +1,5 @@
-import { initializeApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "***ENTFERNT***",
@@ -7,9 +7,11 @@ const firebaseConfig = {
   projectId: "oceanguard-76b24",
   storageBucket: "oceanguard-76b24.firebasestorage.app",
   messagingSenderId: "897676835847",
-  appId: "1:897676835847:web:dd681e7486295185b3fea2"
-  // measurementId weglassen – wir nutzen kein Analytics
-}
+  appId: "1:897676835847:web:dd681e7486295185b3fea2",
+  measurementId: "G-NZ3DMV1PP5"
+};
 
-export const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
+// Firebase initialisieren
+export const app = initializeApp(firebaseConfig);
+
+export const auth = getAuth(app);

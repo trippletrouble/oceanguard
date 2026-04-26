@@ -1,25 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
-
-class RegisterRequest(BaseModel):
-    email: EmailStr
+class SyncRequest(BaseModel):
     name: str
-    password: ***ENTFERNT***
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: ***ENTFERNT***
-
-
-class TokenResponse(BaseModel):
-    access_token: ***ENTFERNT***
-    token_type: ***ENTFERNT*** = "bearer"
-
 
 class UserResponse(BaseModel):
     id: int
+    firebase_uid: str
     email: str
     name: str
     role: str
