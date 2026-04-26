@@ -12,6 +12,8 @@ from app.database import init_db, async_session
 from app.models.species import Species
 from app.routers import auth
 
+from app.routers import species
+
 # --- FIREBASE SETUP ---
 def setup_firebase():
     """Initialisiert Firebase, falls noch nicht geschehen."""
@@ -74,3 +76,6 @@ async def root():
         "status": "online",
         "message": "OceanGuard API is running smoothly."
     }
+
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(species.router, prefix="/api/species", tags=["Species"]) 
