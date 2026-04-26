@@ -1,0 +1,116 @@
+.glass-card {
+  min-height: 18rem;
+  transition: all 0.5s ease;
+  position: relative;
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.03) 100%
+    )
+    padding-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(32px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0) 30%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: destination-out;
+  pointer-events: none;
+}
+
+.fish-header {
+  top: 60%;
+  transform: translateY(-50%);
+  padding: 0 1.5rem;
+}
+
+.fish-title,
+.fish-sci {
+  margin-top: 0;
+  line-height: 0.9;
+}
+
+.hover-trigger:hover ~ .glass-card .fish-img {
+  transform: translate(50%, 14rem) scale(0.3);
+}
+
+.fish-desc {
+  opacity: 0;
+  visibility: hidden;
+  position: absolute;
+  bottom: 1.5rem;
+  transition: all 0.5s ease;
+}
+
+.hover-trigger:hover ~ .glass-card .fish-desc {
+  opacity: 0.9;
+  visibility: visible;
+}
+
+@media (min-width: 1025px) {
+  .hover-trigger:hover ~ .glass-card .fish-header {
+    top: 1.5rem;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1280px) {
+  .glass-card {
+    min-height: 24rem;
+    transition: none;
+  }
+
+  .hover-trigger:hover ~ .glass-card .fish-img {
+    transform: translate(40%, 20rem) scale(0.3);
+  }
+}
+
+@media (max-width: 1024px) {
+  .glass-card,
+  .fish-header,
+  .fish-img,
+  .fish-desc {
+    transition: none !important;
+  }
+
+  .glass-card {
+    min-height: 25rem;
+    transition: none;
+  }
+
+  .fish-header {
+    top: 8rem;
+    transform: translateY(0);
+  }
+
+  .fish-img {
+    transform: none !important;
+  }
+
+  .fish-desc {
+    opacity: 1;
+    visibility: visible;
+    transition: none;
+  }
+}
