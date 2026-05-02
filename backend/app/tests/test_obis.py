@@ -1,17 +1,33 @@
-from app.services.obis_service import OBISService
+import pytest
+from app.services.obis_service import obis_service
 
-def test_tuna_connection():
-    service = OBISService()
-    print("Connecting to OBIS for Red Tuna data...")
-    
-    results = service.fetch_sightings("Thunnus thynnus")
-    
-    if results:
-        print(f"Success! Found {len(results)} sightings.")
+
+@pytest.mark.asyncio
+async def test_obis_service_live_data():
+    # Validates that the service connects to OBIS and returns the correct keys
+    test_species = "Thunnus thynnus"
+
+    results = await obis_service.fetch_occurrences(scientific_name=test_species, size=10)
+
+    assert isinstance(results, list), "Results should be a list"
+
+    if len(results) > 0:
         first = results[0]
-        print(f"Sample Location: Lat {first.get('decimalLatitude')}, Lng {first.get('decimalLongitude')}")
+        assert "decimalLatitude" in first, "Missing latitude"
+        assert "decimalLongitude" in first, "Missing longitude"
+        assert "eventDate" in first, "Missing date"
+        print(f"\n Test Passed: Received {len(results)} records from OBIS.")
     else:
-        print("No data found or connection failed.")
+        pytest.fail("No data returned from OBIS API. Check your internet or scientific name.")
 
-if __name__ == "__main__":
-    test_tuna_connection()
+
+@pytest.mark.asyncio
+async def test_obis_parameter_handling():
+    # Ensures the service handles custom geometry correctly
+    custom_geo = "POLYGON((-10 35, 0 35, 0 45, -10 45, -10 35))"
+    results = await obis_service.fetch_occurrences(
+        scientific_name="Thunnus thynnus",
+        geometry=custom_geo,
+        size=5
+    )
+    assert isinstance(results, list)
