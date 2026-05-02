@@ -8,7 +8,32 @@ logger = logging.getLogger(__name__)
 class OBISService:
     BASE_URL = "https://api.obis.org/v3/occurrence"
 
-    DEFAULT_GEOMETRY = "POLYGON((-5 30, 36 30, 36 46, -5 46, -5 30))"
+    SPECIES_CONFIG = {
+        "thunnus-thynnus": {
+            "name": "Thunnus thynnus",
+            "radius": 200,
+            "region": "POLYGON((-5 30, 36 30, 36 46, -5 46, -5 30))"
+        },
+        "xiphias-gladius": {
+            "name": "Xiphias gladius",
+            "radius": 200,
+            "region": "POLYGON((-5 30, 36 30, 36 46, -5 46, -5 30))"
+        },
+        "gadus-morhua": {
+            "name": "Gadus morhua",
+            "radius": 150,
+            "region": "POLYGON((-20 45, 20 45, 20 70, -20 70, -20 45))"
+        },
+        "sardina-pilchardus": {
+            "name": "Sardina pilchardus",
+            "radius": 100,
+            "region": "POLYGON((-15 35, 10 35, 10 60, -15 60, -15 35))"
+        }
+    }
+
+    def __init__(self):
+        # In-Memory Cache: Dict[species_id, Dict[month, zone_data]]
+        self._zone_cache: Dict[str, Dict[int, Dict]] = {}
 
     async def fetch_occurrences(
             self,
@@ -16,25 +41,22 @@ class OBISService:
             start_date: Optional[str] = None,
             end_date: Optional[str] = None,
             geometry: Optional[str] = None,
-            size: int = 500
+            size: int = 5000
     ) -> List[Dict]:
-        # Fetches and parses sighting data from OBIS API
-        params = {
+        raw_params = {
             "scientificname": scientific_name,
             "startdate": start_date,
             "enddate": end_date,
-            "geometry": geometry or self.DEFAULT_GEOMETRY,
+            "geometry": geometry,
             "size": size
         }
 
-        params = {k: v for k, v in params.items() if v is not None}
+        params = {name: value for name, value in raw_params.items() if value is not None}
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(self.BASE_URL, params=params)
-
                 response.raise_for_status()
-
                 data = response.json()
                 results = data.get("results", [])
 
@@ -51,14 +73,10 @@ class OBISService:
                             "eventDate": date
                         })
 
-                logger.info(f"Successfully fetched {len(parsed_occurrences)} records for {scientific_name}")
                 return parsed_occurrences
 
-        except httpx.TimeoutException:
-            logger.error(f"OBIS API request timed out for {scientific_name}")
-            return []
-        except httpx.HTTPStatusError as e:
-            logger.error(f"OBIS API returned error {e.response.status_code}: {e.response.text}")
+        except (httpx.TimeoutException, httpx.HTTPStatusError) as e:
+            logger.error(f"OBIS API Error for {scientific_name}: {str(e)}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error in OBIS service: {str(e)}")
