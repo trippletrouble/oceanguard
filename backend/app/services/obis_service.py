@@ -93,7 +93,7 @@ class OBISService:
                 date = datetime.fromisoformat(occ["eventDate"].split('T')[0])
                 month = date.month
                 monthly_groups[month].append((occ["decimalLatitude"], occ["decimalLongitude"]))
-            except (ValueError, KeyError, TypeError):
+            except (ValueError, KeyError, TypeError, AttributeError):
                 continue
 
         calculated_zones = {}
