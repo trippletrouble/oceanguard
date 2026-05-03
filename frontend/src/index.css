@@ -15,7 +15,7 @@
 
 @layer base {
   body {
-    @apply bg-ocean bg-fixed;
+    @apply bg-ocean bg-no-repeat min-h-screen;
     margin: 0;
     font-family: var(--font-cal);
   }

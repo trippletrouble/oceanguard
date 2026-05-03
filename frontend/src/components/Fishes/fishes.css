@@ -94,8 +94,12 @@
     transition: none !important;
   }
 
+  .fish-title {
+    margin-top: -20px;
+  }
+
   .glass-card {
-    min-height: 25rem;
+    min-height: 20rem;
     transition: none;
   }
 
@@ -111,6 +115,17 @@
   .fish-desc {
     opacity: 1;
     visibility: visible;
+    transition: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .fish-title {
+    margin-top: -20px;
+  }
+
+  .glass-card {
+    min-height: 25rem;
     transition: none;
   }
 }
