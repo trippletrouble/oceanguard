@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, Float, Boolean, DateTime
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, Column
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -19,3 +19,4 @@ class Species(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    notes = Column(String, nullable=True)
