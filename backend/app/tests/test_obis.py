@@ -1,33 +1,78 @@
 import pytest
-from app.services.obis_service import obis_service
+
+from app.services.obis_service import OBISService
+
+
+@pytest.fixture()
+def service():
+    return OBISService()
 
 
 @pytest.mark.asyncio
-async def test_obis_service_live_data():
-    # Validates that the service connects to OBIS and returns the correct keys
-    test_species = "Thunnus thynnus"
+async def test_fetch_occurrences(service):
+    config = service.SPECIES_CONFIG["thunnus-thynnus"]
 
-    results = await obis_service.fetch_occurrences(scientific_name=test_species, size=10)
-
-    assert isinstance(results, list), "Results should be a list"
-
-    if len(results) > 0:
-        first = results[0]
-        assert "decimalLatitude" in first, "Missing latitude"
-        assert "decimalLongitude" in first, "Missing longitude"
-        assert "eventDate" in first, "Missing date"
-        print(f"\n Test Passed: Received {len(results)} records from OBIS.")
-    else:
-        pytest.fail("No data returned from OBIS API. Check your internet or scientific name.")
-
-
-@pytest.mark.asyncio
-async def test_obis_parameter_handling():
-    # Ensures the service handles custom geometry correctly
-    custom_geo = "POLYGON((-10 35, 0 35, 0 45, -10 45, -10 35))"
-    results = await obis_service.fetch_occurrences(
-        scientific_name="Thunnus thynnus",
-        geometry=custom_geo,
-        size=5
+    results = await service.fetch_occurrences(
+        scientific_name=config["name"],
+        geometry=config["region"],
+        size=10,
     )
+
     assert isinstance(results, list)
+    assert len(results) > 0, "OBIS returned no data for the test species"
+
+    first = results[0]
+    assert "decimalLatitude" in first
+    assert "decimalLongitude" in first
+    assert "eventDate" in first
+
+    for item in results:
+        assert item["decimalLatitude"] is not None
+        assert item["decimalLongitude"] is not None
+        assert "eventDate" in item
+
+
+@pytest.mark.asyncio
+async def test_calculate_zones(service):
+    config = service.SPECIES_CONFIG["thunnus-thynnus"]
+
+    occurrences = await service.fetch_occurrences(
+        scientific_name=config["name"],
+        geometry=config["region"],
+        size=50,
+    )
+
+    assert len(occurrences) > 0, "OBIS returned no data for zone calculation"
+
+    zones = service.calculate_zones("thunnus-thynnus", occurrences)
+
+    assert isinstance(zones, dict)
+    assert len(zones) > 0, "No monthly zones were created from live OBIS data"
+
+    for month, zone in zones.items():
+        assert 1 <= month <= 12
+        assert "center" in zone
+        assert "lat" in zone["center"]
+        assert "lng" in zone["center"]
+        assert zone["radius_km"] == 200
+        assert zone["sighting_count"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_refresh_zones(service):
+    await service.refresh_zones("thunnus-thynnus")
+
+    cached = service.get_zones("thunnus-thynnus")
+
+    assert cached is not None, "refresh_zones did not populate the cache"
+    assert isinstance(cached, dict)
+    assert len(cached) > 0, "Cache is empty after refresh_zones"
+
+    for month, zone in cached.items():
+        assert 1 <= month <= 12
+        assert zone["radius_km"] == 200
+        assert zone["sighting_count"] >= 1
+
+
+def test_get_zones_none_for_unknown_species(service):
+    assert service.get_zones("unknown-fish") is None

@@ -1,5 +1,6 @@
 import httpx
 import logging
+from datetime import datetime
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -81,5 +82,58 @@ class OBISService:
         except Exception as e:
             logger.error(f"Unexpected error in OBIS service: {str(e)}")
             return []
+
+    def calculate_zones(self, species_id: str, occurrences: List[Dict]) -> Dict[int, Dict]:
+        # Groups sightings by month and calculates the average center point
+        monthly_groups = {m: [] for m in range(1, 13)}
+        radius = self.SPECIES_CONFIG.get(species_id, {}).get("radius", 200)
+
+        for occ in occurrences:
+            try:
+                date = datetime.fromisoformat(occ["eventDate"].split('T')[0])
+                month = date.month
+                monthly_groups[month].append((occ["decimalLatitude"], occ["decimalLongitude"]))
+            except (ValueError, KeyError, TypeError, AttributeError):
+                continue
+
+        calculated_zones = {}
+        for month, coords in monthly_groups.items():
+            if not coords:
+                continue
+
+            # Calculate center point
+            avg_lat = sum(c[0] for c in coords) / len(coords)
+            avg_lng = sum(c[1] for c in coords) / len(coords)
+
+            calculated_zones[month] = {
+                "center": {"lat": avg_lat, "lng": avg_lng},
+                "radius_km": radius,
+                "sighting_count": len(coords)
+            }
+
+        return calculated_zones
+
+    async def refresh_zones(self, species_id: str):
+        # Fetches data, calculates zones, and updates the cache
+        config = self.SPECIES_CONFIG.get(species_id)
+        if not config:
+            logger.warning(f"No config found for species: {species_id}")
+            return
+
+        occurrences = await self.fetch_occurrences(
+            scientific_name=config["name"],
+            geometry=config["region"]
+        )
+
+        if occurrences:
+            zones = self.calculate_zones(species_id, occurrences)
+            self._zone_cache[species_id] = zones
+            logger.info(f"Loaded zones for {species_id}: {len(zones)} months cached")
+        else:
+            logger.error(f"Failed to refresh zones for {species_id}: No data returned")
+
+    def get_zones(self, species_id: str) -> Optional[Dict[int, Dict]]:
+        return self._zone_cache.get(species_id)
+
 
 obis_service = OBISService()
