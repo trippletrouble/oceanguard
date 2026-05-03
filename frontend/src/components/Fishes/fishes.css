@@ -1,44 +1,3 @@
-.glass-card {
-  min-height: 18rem;
-  transition: all 0.5s ease;
-  position: relative;
-  background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      rgba(255, 255, 255, 0.03) 100%
-    )
-    padding-box;
-
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(32px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-}
-
-.glass-card::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.7) 0%,
-    rgba(255, 255, 255, 0) 30%
-  );
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: destination-out;
-  pointer-events: none;
-}
-
 .fish-header {
   top: 60%;
   transform: translateY(-50%);
@@ -119,13 +78,32 @@
   }
 }
 
-@media (max-width: 400px) {
-  .fish-title {
-    margin-top: -20px;
+@media (max-width: 500px) {
+  .glass-card {
+    min-height: auto;
+    padding-bottom: 2.5rem;
+    display: flex;
+    flex-direction: column;
   }
 
-  .glass-card {
-    min-height: 25rem;
-    transition: none;
+  .fish-header {
+    position: relative;
+    top: auto;
+    transform: none;
+    margin-top: 1rem;
+    padding: 0 1rem;
+  }
+
+  .fish-desc {
+    position: relative;
+    bottom: auto;
+    visibility: visible;
+    margin-top: 2rem;
+    padding: 0 2rem;
+  }
+
+  .fish-img {
+    margin-top: -2rem;
+    height: auto;
   }
 }
