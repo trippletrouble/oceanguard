@@ -19,7 +19,7 @@ async def get_all_species(db: AsyncSession = Depends(get_db)):
     return species_list
 
 @router.get("/{species_id}", response_model=None, summary="Details einer bestimmten Fischart")
-async def get_species_by_id(species_id: int, db: AsyncSession = Depends(get_db)):
+async def get_species_by_id(species_id: str, db: AsyncSession = Depends(get_db)):
     """
     Gibt die detaillierten Informationen zu einer Fischart anhand der ID zurück.
     """
