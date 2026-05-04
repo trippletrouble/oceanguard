@@ -14,5 +14,4 @@ frontend/dist/
 # IDE
 .vscode/
 .idea/
-firebase-service-account.json
 .snapshot-cache*
