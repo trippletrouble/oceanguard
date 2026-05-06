@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.database import init_db, async_session
 from app.models.species import Species
-from app.routers import auth, species
+from app.routers import auth, species, marine
 from app.services.obis_service import obis_service
 
 
@@ -73,6 +73,7 @@ app.add_middleware(
 # --- ROUTERS ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(species.router, prefix="/api/species", tags=["Species"])
+app.include_router(marine.router)
 
 
 @app.get("/", tags=["Root"])
