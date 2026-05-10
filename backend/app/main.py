@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from contextlib import asynccontextmanager
+import asyncio
 
 import firebase_admin
 from firebase_admin import credentials
@@ -12,6 +13,7 @@ from app.database import init_db, async_session
 from app.models.species import Species
 from app.routers import auth, species
 from app.services.obis_service import obis_service
+from app.services.ais_service import ais_service
 
 
 # --- FIREBASE SETUP ---
@@ -50,7 +52,12 @@ async def lifespan(app: FastAPI):
     species_ids = list(obis_service.SPECIES_CONFIG.keys())
     for species_id in species_ids:
         await obis_service.refresh_zones(species_id)
+
+    #AIS stream
+    asyncio.create_task(ais_service.connect_ais_stream())
+
     yield
+
     # Shutdown-Logik hier (falls nötig)
 
 # --- APP INITIALIZATION ---
