@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.database import init_db, async_session
 from app.models.species import Species
-from app.routers import auth, species
+from app.routers import auth, species, vessels
 from app.services.obis_service import obis_service
 from app.services.ais_service import ais_service
 
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
         await obis_service.refresh_zones(species_id)
 
     #AIS stream
-    asyncio.create_task(ais_service.connect_ais_stream())
+    asyncio.create_task(ais_service.connect_ais_stream("sardina-pilchardus"))
 
     yield
 
@@ -80,6 +80,7 @@ app.add_middleware(
 # --- ROUTERS ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(species.router, prefix="/api/species", tags=["Species"])
+app.include_router(vessels.router, prefix="/vessels", tags=["Vessels"])
 
 
 @app.get("/", tags=["Root"])
