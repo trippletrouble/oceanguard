@@ -15,3 +15,4 @@ frontend/dist/
 .vscode/
 .idea/
 .snapshot-cache*
+backend/reset_species.py
