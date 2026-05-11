@@ -1,54 +1,58 @@
 [
   {
     "id": "thunnus-thynnus",
-    "common_name": "Roter Thun",
+    "common_name": "Atlantic Bluefin Tuna",
+    "description": "One of the largest bony fish in the world, the Atlantic Bluefin Tuna is a highly migratory apex predator. It undertakes seasonal migrations between feeding grounds in the North Atlantic and spawning areas in the Mediterranean Sea and Gulf of Mexico.",
     "scientific_name": "Thunnus thynnus",
-    "region": "Mittelmeer / Ostatlantik",
+    "region": "Mediterranean / East Atlantic",
     "temp_min": 15.0,
     "temp_max": 25.0,
     "temp_mid": 22.0,
     "temp_range": 10.0,
     "radius_km": 200,
     "active": true,
-    "notes": "T_mid auf 22.0°C angehoben (Laich-Schwerpunkt 22-24°C, Larvenüberlebensrate maximal). Range 15-25°C deckt kombinierte Fütterungs- und Laichphase im Mittelmeer ab. Radius 200km = konservative Sicherheitsmarge für 48h-Fenster (50km/Tag Wanderung)."
+    "notes": "T_mid raised to 22.0°C (peak spawning range 22–24°C, maximum larval survival rate). Range 15–25°C covers combined feeding and spawning phase in the Mediterranean. Radius 200km = conservative safety margin for 48h window (50km/day migration)."
   },
   {
     "id": "gadus-morhua",
-    "common_name": "Atlantischer Kabeljau",
+    "common_name": "Atlantic Cod",
+    "description": "A commercially vital groundfish of the North Atlantic, Atlantic Cod prefers cold, deep waters and is highly sensitive to temperature changes. Populations have declined sharply due to overfishing, making real-time vessel overlap monitoring especially critical for this species.",
     "scientific_name": "Gadus morhua",
-    "region": "Nordsee / Nordatlantik",
+    "region": "North Sea / North Atlantic",
     "temp_min": 0.0,
     "temp_max": 12.0,
     "temp_mid": 6.0,
     "temp_range": 6.0,
     "radius_km": 100,
     "active": true,
-    "notes": "temp_max auf 12.0°C gesetzt — kritischer metabolischer Wendepunkt (Aerobic Scope kollabiert über 12°C). temp_range auf 6.0°C angepasst (0-12°C Habitat, Optimum 0-6°C beim Laichen). T_mid=6.0°C korreliert mit Optima der Embryonalentwicklung (~14 Tage bei 6°C). Radius 100km angemessen für standorttreue Art."
+    "notes": "temp_max set to 12.0°C — critical metabolic tipping point (aerobic scope collapses above 12°C). temp_range adjusted to 6.0°C (0–12°C habitat, optimum 0–6°C during spawning). T_mid=6.0°C correlates with optimal embryonic development (~14 days at 6°C). Radius 100km appropriate for site-faithful species."
   },
   {
     "id": "sardina-pilchardus",
-    "common_name": "Europäische Sardine",
+    "common_name": "European Sardine",
+    "description": "A small, fast-reproducing pelagic fish found along European Atlantic coasts and throughout the Mediterranean. European Sardines form extremely dense schools and are a keystone forage species in the marine food web, making their spawning grounds particularly vulnerable to fishing pressure.",
     "scientific_name": "Sardina pilchardus",
-    "region": "Europäische Atlantikküste / Mittelmeer",
+    "region": "European Atlantic Coast / Mediterranean",
     "temp_min": 10.0,
     "temp_max": 20.0,
     "temp_mid": 15.0,
     "temp_range": 5.0,
     "radius_km": 50,
     "active": true,
-    "notes": "Range 10-20°C wissenschaftlich präzise (10°C-Isotherme Nord, 20°C-Isotherme Süd). Spawning bei 13-18°C, Larvenhabitat 16-18°C SST. temp_range auf 5.0°C angepasst (engeres Optimum). Radius 50km strategisch für Fehlalarm-Minimierung bei lokal extrem dichten Schulen. Schulen tagesüber 25-55m tief, nachts 10-35m."
+    "notes": "Range 10–20°C scientifically precise (10°C isotherm north, 20°C isotherm south). Spawning at 13–18°C, larval habitat 16–18°C SST. temp_range adjusted to 5.0°C (narrower thermal optimum). Radius 50km strategic for false-alarm minimisation given locally dense schools. Schools at 25–55m depth during day, 10–35m at night."
   },
   {
     "id": "xiphias-gladius",
-    "common_name": "Schwertfisch",
+    "common_name": "Swordfish",
+    "description": "A large, highly migratory predatory fish recognisable by its long, flat bill. Swordfish undergo diel vertical migration — staying at depths of 400–600m during the day and surfacing at night — meaning interactions with fishing fleets occur predominantly during nighttime hours.",
     "scientific_name": "Xiphias gladius",
-    "region": "Mittelmeer / Atlantik",
+    "region": "Mediterranean / Atlantic",
     "temp_min": 18.0,
     "temp_max": 28.0,
     "temp_mid": 23.0,
     "temp_range": 10.0,
     "radius_km": 150,
     "active": true,
-    "notes": "Range 18-28°C korrekt: adulte bevorzugen 18-22°C SST (epipelagische Phase), Larven/Jungtiere >24°C. T_mid=23.0°C (Lingering-Behavior bei 23-27°C = potenzielle Laichgründe). Radius 150km deckt 48h-Fenster ab (30-55km/Tag normaler Transit, max. 107km/Tag). Diel Vertical Migration: tagsüber 400-600m, nachts Oberfläche — Interaktion mit Fischereiflotte primär nachts."
+    "notes": "Range 18–28°C correct: adults prefer 18–22°C SST (epipelagic phase), larvae/juveniles >24°C. T_mid=23.0°C (lingering behaviour at 23–27°C = potential spawning grounds). Radius 150km covers 48h window (30–55km/day normal transit, max. 107km/day). Diel vertical migration: 400–600m daytime, surface at night — fleet interaction primarily nocturnal."
   }
 ]
