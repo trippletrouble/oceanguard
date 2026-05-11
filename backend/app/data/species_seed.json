@@ -2,7 +2,7 @@
   {
     "id": "thunnus-thynnus",
     "common_name": "Atlantic Bluefin Tuna",
-    "description": "One of the largest bony fish in the world, the Atlantic Bluefin Tuna is a highly migratory apex predator. It undertakes seasonal migrations between feeding grounds in the North Atlantic and spawning areas in the Mediterranean Sea and Gulf of Mexico.",
+    "description": "As a top-tier apex predator, the Bluefin Tuna maintains the health of the Mediterranean food web by regulating mid-sized fish populations. Its status as the 'gold of the sea' in the global sushi market drives intense industrial purse-seine fishing, often targeting them before they reach breeding age.",
     "scientific_name": "Thunnus thynnus",
     "region": "Mediterranean / East Atlantic",
     "temp_min": 15.0,
@@ -16,7 +16,7 @@
   {
     "id": "gadus-morhua",
     "common_name": "Atlantic Cod",
-    "description": "A commercially vital groundfish of the North Atlantic, Atlantic Cod prefers cold, deep waters and is highly sensitive to temperature changes. Populations have declined sharply due to overfishing, making real-time vessel overlap monitoring especially critical for this species.",
+    "description": "A keystone species of the North Sea, Cod have historically balanced the seafloor ecosystem. Decades of bottom trawling and climate-driven temperature shifts have pushed stocks to the brink; without strict monitoring, the loss of this predator triggers a 'trophic cascade' where prey species overpopulate and deplete local resources.",
     "scientific_name": "Gadus morhua",
     "region": "North Sea / North Atlantic",
     "temp_min": 0.0,
@@ -30,7 +30,7 @@
   {
     "id": "sardina-pilchardus",
     "common_name": "European Sardine",
-    "description": "A small, fast-reproducing pelagic fish found along European Atlantic coasts and throughout the Mediterranean. European Sardines form extremely dense schools and are a keystone forage species in the marine food web, making their spawning grounds particularly vulnerable to fishing pressure.",
+    "description": "Swordfish are vital indicators of ocean health, migrating vast distances and connecting different marine zones. They are heavily targeted by longline fisheries; because they are slow to mature and often caught as 'bycatch' before they can spawn, their populations are struggling to stay ahead of industrial demand.",
     "scientific_name": "Sardina pilchardus",
     "region": "European Atlantic Coast / Mediterranean",
     "temp_min": 10.0,
@@ -44,7 +44,7 @@
   {
     "id": "xiphias-gladius",
     "common_name": "Swordfish",
-    "description": "A large, highly migratory predatory fish recognisable by its long, flat bill. Swordfish undergo diel vertical migration — staying at depths of 400–600m during the day and surfacing at night — meaning interactions with fishing fleets occur predominantly during nighttime hours.",
+    "description": "The foundation of the East Atlantic food chain, Sardines convert plankton into energy for whales, seabirds, and larger fish. They are frequently overfished for 'fishmeal' and oil; since their schools are highly predictable based on water temperature, they are extremely vulnerable to efficient, high-volume industrial fleets.",
     "scientific_name": "Xiphias gladius",
     "region": "Mediterranean / Atlantic",
     "temp_min": 18.0,
