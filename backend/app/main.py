@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     # Startup-Logik
     await init_db()
     setup_firebase()
-    await seed_database()
+    #await seed_database()
     species_ids = list(obis_service.SPECIES_CONFIG.keys())
     for species_id in species_ids:
         await obis_service.refresh_zones(species_id)
@@ -73,7 +73,7 @@ app.add_middleware(
 # --- ROUTERS ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(species.router, prefix="/api/species", tags=["Species"])
-app.include_router(marine.router)
+app.include_router(marine.router, prefix="/marine-conditions", tags=["Marine"])
 
 
 @app.get("/", tags=["Root"])

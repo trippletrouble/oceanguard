@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.services.meteo_service import get_sst
 from app.schemas.marine import MarineResponse
 
-router = APIRouter(prefix="/marine-conditions", tags=["Marine"])
+router = APIRouter()
 
 @router.get("", response_model=MarineResponse)
 async def marine_conditions(
