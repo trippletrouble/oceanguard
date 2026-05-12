@@ -1,24 +1,29 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import firebase_admin.auth
-
 from app.database import get_db
 from app.models.user import User
 
-# OAuth2-Standard 
-# tokenUrl zeigt auf sync, damit Swagger den Pfad findet.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/sync")
+# OAuth2 Bearer Token (Firebase-kompatibel, RFC 6750)
+security = HTTPBearer()
 
 async def get_current_user(
-    token: ***ENTFERNT*** = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
+    token = credentials.credentials  # Token ohne "Bearer " Prefix
+
     try:
         # 1. Token direkt gegen Firebase prüfen
         decoded_token = firebase_admin.auth.verify_id_token(token)
         uid = decoded_token.get("uid")
+    except firebase_admin.auth.ExpiredIdTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -31,12 +36,11 @@ async def get_current_user(
 
     # 3. AUTO-SYNC: User existiert lokal nicht? Dann sofort anlegen!
     if not user:
-        # Wir extrahieren Email und Namen aus dem Firebase-Token (falls vorhanden)
         user = User(
             firebase_uid=uid,
             email=decoded_token.get("email"),
-            name=decoded_token.get("name", "Team Developer"), # Fallback-Name
-            role="admin" # Für die lokale Entwicklung ist jeder erstmal Admin
+            name=decoded_token.get("name", "Team Developer"),  # Fallback-Name
+            role="admin"  # Für die lokale Entwicklung ist jeder erstmal Admin
         )
         db.add(user)
         await db.commit()
@@ -51,7 +55,7 @@ def require_role(role: str):
     async def role_checker(user: User = Depends(get_current_user)) -> User:
         if user.role != role and user.role != "admin":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
         return user
