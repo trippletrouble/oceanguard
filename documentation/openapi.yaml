@@ -149,9 +149,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        # FIX #2: 409 Conflict hinzugefügt
-        '409':
-          description: Art mit dieser ID existiert bereits
   /api/species/{id}:
     parameters:
     - name: id
@@ -234,9 +231,14 @@ paths:
       security:
       - BearerAuth: []
       responses:
-        # FIX #1: 200 → 204 No Content
-        '204':
-          description: Fischart erfolgreich deaktiviert
+        '200':
+          description: Fischart deaktiviert
+          content:
+            application/json:
+              examples:
+                default:
+                  value:
+                    message: Species deactivated
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -490,18 +492,6 @@ paths:
         examples:
           default:
             value: 35.0,10.0,46.0,20.0
-      # FIX #6: month Parameter hinzugefügt
-      - name: month
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 12
-        description: Monat (Standard: aktueller Monat)
-        examples:
-          default:
-            value: 6
       responses:
         '200':
           description: Liste der Warnungen
@@ -571,9 +561,8 @@ paths:
           default:
             value: thunnus-thynnus
       responses:
-        # FIX #1: 200 → 204 No Content
-        '204':
-          description: Favorit erfolgreich entfernt
+        '200':
+          description: Favorit entfernt
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -634,9 +623,8 @@ paths:
           default:
             value: 1
       responses:
-        # FIX #1: 200 → 204 No Content
-        '204':
-          description: Regions-Favorit erfolgreich entfernt
+        '200':
+          description: Region entfernt
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -751,9 +739,8 @@ paths:
           default:
             value: 1
       responses:
-        # FIX #1: 200 → 204 No Content
-        '204':
-          description: Report erfolgreich gelöscht
+        '200':
+          description: Report gelöscht
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -795,9 +782,8 @@ paths:
           default:
             value: 1
       responses:
-        # FIX #1: 200 → 204 No Content
-        '204':
-          description: User erfolgreich gelöscht
+        '200':
+          description: User gelöscht
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -961,10 +947,9 @@ components:
         temp_max:
           type: number
           examples: [25.0]
-        # FIX #5: temp_mid Beispielwert 20.0 → 22.0
         temp_mid:
           type: number
-          examples: [22.0]
+          examples: [20.0]
         temp_range:
           type: number
           examples: [10.0]
@@ -1030,42 +1015,27 @@ components:
           type: integer
         active:
           type: boolean
-    # FIX #4: MigrationZone als GeoJSON Feature
     MigrationZone:
       type: object
-      description: Saisonale Verbreitungszone als GeoJSON Feature (Leaflet.js-kompatibel)
       properties:
-        type:
+        species_id:
           type: string
-          examples: ["Feature"]
-        geometry:
-          type: object
-          properties:
-            type:
-              type: string
-              examples: ["Point"]
-            coordinates:
-              type: array
-              items:
-                type: number
-              description: "[lng, lat] – GeoJSON Konvention"
-              examples:
-                - [14.2, 38.5]
-        properties:
-          type: object
-          properties:
-            species_id:
-              type: string
-              examples: ["thunnus-thynnus"]
-            month:
-              type: integer
-              examples: [6]
-            radius_km:
-              type: integer
-              examples: [200]
-            sighting_count:
-              type: integer
-              examples: [142]
+          examples: ["thunnus-thynnus"]
+        month:
+          type: integer
+          examples: [6]
+        center_lat:
+          type: number
+          examples: [38.5]
+        center_lng:
+          type: number
+          examples: [14.2]
+        radius_km:
+          type: integer
+          examples: [200]
+        sighting_count:
+          type: integer
+          examples: [142]
     VesselResponse:
       type: object
       properties:
@@ -1246,7 +1216,6 @@ components:
         created_at:
           type: string
           format: date-time
-    # FIX #3: snapshot aus required entfernt – wird vom Backend intern berechnet
     ReportCreate:
       type: object
       properties:
@@ -1262,10 +1231,13 @@ components:
         month:
           type: integer
           examples: [6]
+        snapshot:
+          $ref: '#/components/schemas/OverlapListResponse'
       required:
       - species_id
       - bbox
       - month
+      - snapshot
     ReportResponse:
       type: object
       properties:
