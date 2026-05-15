@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.database import init_db, async_session
 from app.models.species import Species
-from app.routers import auth, species, vessels
+from app.routers import auth, species, marine, vessels
 from app.services.obis_service import obis_service
 from app.services.ais_service import ais_service
 
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
     # Startup-Logik
     await init_db()
     setup_firebase()
-    await seed_database()
+    #await seed_database()
     species_ids = list(obis_service.SPECIES_CONFIG.keys())
     for species_id in species_ids:
         await obis_service.refresh_zones(species_id)
@@ -78,8 +78,9 @@ app.add_middleware(
 )
 
 # --- ROUTERS ---
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(species.router, prefix="/api/species", tags=["Species"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(species.router, prefix="/species", tags=["Species"])
+app.include_router(marine.router, prefix="/marine-conditions", tags=["Marine"])
 app.include_router(vessels.router, prefix="/vessels", tags=["Vessels"])
 
 

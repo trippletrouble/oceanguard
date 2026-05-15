@@ -1,24 +1,29 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import firebase_admin.auth
-
 from app.database import get_db
 from app.models.user import User
 
-# OAuth2-Standard für den Professor. 
-# tokenUrl zeigt auf sync, damit Swagger den Pfad findet.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/sync")
+# OAuth2 Bearer Token (Firebase-kompatibel, RFC 6750)
+security = HTTPBearer()
 
 async def get_current_user(
-    token: ***ENTFERNT*** = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
+    token = credentials.credentials  # Token ohne "Bearer " Prefix
+
     try:
         # 1. Token direkt gegen Firebase prüfen
         decoded_token = firebase_admin.auth.verify_id_token(token)
         uid = decoded_token.get("uid")
+    except firebase_admin.auth.ExpiredIdTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -29,20 +34,28 @@ async def get_current_user(
     result = await db.execute(select(User).where(User.firebase_uid == uid))
     user = result.scalar_one_or_none()
 
+    # 3. AUTO-SYNC: User existiert lokal nicht? Dann sofort anlegen!
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User verified but not synced to local database."
+        user = User(
+            firebase_uid=uid,
+            email=decoded_token.get("email"),
+            name=decoded_token.get("name", "Team Developer"),  # Fallback-Name
+            role="admin"  # Für die lokale Entwicklung ist jeder erstmal Admin
         )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        print(f"🔄 Auto-Sync: User {user.email} wurde lokal angelegt.")
 
     return user
+
 
 def require_role(role: str):
     """Factory für Rollen-Prüfung (z.B. für Admin-Bereiche)."""
     async def role_checker(user: User = Depends(get_current_user)) -> User:
         if user.role != role and user.role != "admin":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
             )
         return user
