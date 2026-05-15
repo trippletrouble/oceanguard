@@ -26,7 +26,6 @@ async def get_migration_zone(
     species_id: str,
     month: int = Query(..., ge=1, le=12, description="Monat (1–12)"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     result = await db.execute(select(Species).where(Species.id == species_id))
     species = result.scalar_one_or_none()

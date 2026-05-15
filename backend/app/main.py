@@ -71,10 +71,9 @@ app.add_middleware(
 )
 
 # --- ROUTERS ---
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(species.router, prefix="/api/species", tags=["Species"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(species.router, prefix="/species", tags=["Species"])
 app.include_router(marine.router, prefix="/marine-conditions", tags=["Marine"])
-
 
 @app.get("/", tags=["Root"])
 async def root():

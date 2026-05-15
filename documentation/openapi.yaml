@@ -3,56 +3,61 @@ info:
   title: OceanGuard API
   version: 1.0.0
   description: |
-    OceanGuard ist ein Web Service, der in Echtzeit zeigt, ob Fischereifahrzeuge in Gebieten aktiver Fisch-Verbreitungszonen operieren. 
+    OceanGuard ist ein Web Service, der in Echtzeit zeigt, ob Fischereifahrzeuge in Gebieten aktiver Fisch-Verbreitungszonen operieren.
 
     ### Externe Datenquellen (Aggregator)
     Unser Backend konsumiert drei externe APIs und bietet dem Frontend über eine saubere REST-Schnittstelle aufbereitete, kombinierte Daten an:
-    
-    * **OBIS (Ocean Biodiversity Information System):** Historische Sichtungsdaten (`api.obis.org/v3/occurrence`). Parameter: `scientificname`, `geometry`. Daraus berechnen wir die saisonalen Verbreitungszonen (Mittelpunkt pro Monat).
-    * **AISstream.io:** Echtzeit-Schiffspositionen via WebSocket (`wss://stream.aisstream.io/v0/stream`). Liefert `Latitude`, `Longitude` und `SpeedOverGround`. Wir filtern nach Fischereifahrzeugen.
-    * **Open-Meteo Marine API:** Aktuelle Meeresbedingungen (`marine-api.open-meteo.com/v1/marine`). Liefert die Wassertemperatur (SST), um die Migrationswahrscheinlichkeit zu verifizieren.
+
+    * **OBIS (Ocean Biodiversity Information System):** Historische Sichtungsdaten (`api.obis.org/v3/occurrence`). Daraus berechnen wir saisonale Verbreitungszonen (Mittelpunkt pro Monat via Haversine).
+    * **AISstream.io:** Echtzeit-Schiffspositionen via WebSocket (`wss://stream.aisstream.io/v0/stream`). Liefert `Latitude`, `Longitude` und `SpeedOverGround`. Wir filtern nach Fischereifahrzeugen (ShipType=30 oder NavigationalStatus=7). Die Subscription-Bbox wird dynamisch aus dem `radius_km` der jeweiligen Art berechnet.
+    * **Open-Meteo Marine API:** Sea Surface Temperature (`marine-api.open-meteo.com/v1/marine`). Wird einmalig beim App-Start pro Art aus 3 Sampling-Punkten (Zonen-Zentrum + Nord + Süd bei 50% Radius) gemittelt und gecacht (TTL 24h). **Nicht pro Schiff abgerufen.**
 
     ### Kern-Feature: Overlap-Score
     Der Score beantwortet die Frage: *„Fahren gerade Fischereifahrzeuge genau dort, wo Fische saisonal wandern – und wie kritisch ist das?"*
-    
-    **Score = (D × 0.4) + (A × 0.35) + (T × 0.25)**
-    * **D (Distanz):** Wie nah ist das Schiff (AIS) an der Verbreitungszone (OBIS)?
-    * **A (Aktivität):** Wie wahrscheinlich fischt das Schiff aktiv? (Basierend auf AIS Geschwindigkeit < 5 Knoten).
-    * **T (Temperatur):** Passt die aktuelle Wassertemperatur (Open-Meteo) zum Optimum der Art?
+
+    **Score = D × (A × 0.6 + T × 0.4)**
+
+    * **D (Distanz-Gatekeeper):** `max(0, 1 - d / radius_km)` — Wie nah ist das Schiff an der Verbreitungszone? `radius_km` ist artspezifisch. D=0 wenn außerhalb → gesamter Score=0. Verhindert False Positives.
+    * **A (Aktivität):** `max(0, 1 - sog / 10)` — Wie wahrscheinlich fischt das Schiff? Basiert auf AIS-Geschwindigkeit (< 10 Knoten).
+    * **T (Temperatur):** `max(0, 1 - |sst - temp_mid| / temp_range)` — Passt die Wassertemperatur zum Optimum der Art? SST kommt aus dem 3-Punkte-Sampling-Cache.
+
+    **Bewertung:** > 0.7 → KRITISCH | 0.4–0.7 → WARNUNG | < 0.4 → GERING
+
 servers:
-- url: http://localhost:8000
-  description: Lokaler Entwicklungsserver
+  - url: http://localhost:8000
+    description: Lokaler Entwicklungsserver
+
 tags:
-- name: Auth
-  description: Firebase-basierte Authentifizierung
-- name: Species
-  description: Fischarten – öffentlich lesbar, Admin-CRUD
-- name: Vessels
-  description: Echtzeit-Fischereifahrzeuge via AISstream
-- name: Overlap
-  description: Kern-Feature – Overlap-Score Berechnung
-- name: Marine
-  description: Meereskonditionen via Open-Meteo
-- name: Alerts
-  description: Warnungen bei kritischem Overlap-Score
-- name: Favorites
-  description: Gespeicherte Arten und Regionen (User)
-- name: Reports
-  description: Gespeicherte Overlap-Snapshots (User)
-- name: Admin
-  description: User-Verwaltung und System-Status
+  - name: Auth
+    description: Firebase-basierte Authentifizierung
+  - name: Species
+    description: Fischarten – öffentlich lesbar, Admin-CRUD
+  - name: Vessels
+    description: Echtzeit-Fischereifahrzeuge via AISstream (Frei zugänglich)
+  - name: Overlaps
+    description: Kern-Feature – Overlap-Score Berechnung (Frei zugänglich)
+  - name: Marine
+    description: Meereskonditionen via Open-Meteo (Frei zugänglich)
+  - name: Alerts
+    description: Warnungen bei kritischem Overlap-Score (Frei zugänglich)
+  - name: Favorites
+    description: Gespeicherte Arten und Regionen (User Login benötigt)
+  - name: Reports
+    description: Gespeicherte Overlap-Snapshots (User Login benötigt)
+  - name: Admin
+    description: User-Verwaltung und System-Status (Admin Login benötigt)
+
 paths:
-  /api/auth/sync:
+  /auth/sync:
     post:
       tags:
-      - Auth
+        - Auth
       summary: User nach Firebase-Login synchronisieren
       description: |
-        Wird nach jedem Firebase-Login aufgerufen. Legt den User in der
-        eigenen Datenbank an (201) oder gibt den bestehenden User zurück (200). Der
-        Firebase ID-Token muss im Authorization-Header mitgeschickt werden.
+        **Rolle: User (Mit Login)**
+        Wird nach Firebase-Login aufgerufen. Legt den User in der eigenen Datenbank an (201) oder gibt den bestehenden User zurück (200). Das Backend führt außerdem einen Auto-Sync in `get_current_user()` durch – dieser Endpoint ist optional.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -72,15 +77,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/auth/me:
+
+  /auth/me:
     get:
       tags:
-      - Auth
+        - Auth
       summary: Aktuellen eingeloggten User abrufen
+      description: |
+        **Rolle: User (Mit Login)**
+        Gibt die Profildaten des aktuell authentifizierten Users zurück.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Aktueller User
@@ -90,33 +101,31 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/auth/logout:
+
+  /auth/logout:
     post:
       tags:
-      - Auth
+        - Auth
       summary: Logout (client-seitig)
       description: |
-        Das eigentliche Logout passiert im Frontend via Firebase signOut().
-        Dieser Endpoint dient nur als REST-konforme Bestätigung.
+        **Rolle: User (Mit Login)**
+        Das eigentliche Logout passiert im Frontend via Firebase signOut(). Dieser Endpoint dient als REST-konforme Bestätigung.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
-        '200':
-          description: Logout erfolgreich
-          content:
-            application/json:
-              examples:
-                default:
-                  value:
-                    message: Logged out successfully
+        '204':
+          $ref: '#/components/responses/NoContent'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/species:
+
+  /species:
     get:
       tags:
-      - Species
+        - Species
       summary: Alle aktiven Fischarten abrufen
-      description: Gibt alle aktiven Arten zurück. Kein Token erforderlich (Guest).
+      description: |
+        **Rolle: Gast (Ohne Login)**
+        Gibt alle aktiven Arten zurück.
       responses:
         '200':
           description: Liste aller aktiven Arten
@@ -128,10 +137,13 @@ paths:
                   $ref: '#/components/schemas/SpeciesResponse'
     post:
       tags:
-      - Species
-      summary: Neue Fischart anlegen (Admin)
+        - Species
+      summary: Neue Fischart anlegen
+      description: |
+        **Rolle: Admin**
+        Erstellt einen neuen Eintrag für eine Fischart.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -145,28 +157,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpeciesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        # FIX #2: 409 Conflict hinzugefügt
         '409':
-          description: Art mit dieser ID existiert bereits
-  /api/species/{id}:
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /species/{id}:
     parameters:
-    - name: id
-      in: path
-      required: true
-      schema:
-        type: string
-      examples:
-        default:
-          value: thunnus-thynnus
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        examples:
+          default:
+            value: thunnus-thynnus
     get:
       tags:
-      - Species
+        - Species
       summary: Einzelne Fischart abrufen
-      description: Kein Token erforderlich (Guest).
+      description: |
+        **Rolle: Gast (Ohne Login)**
       responses:
         '200':
           description: Fischart gefunden
@@ -178,10 +195,12 @@ paths:
           $ref: '#/components/responses/NotFound'
     put:
       tags:
-      - Species
-      summary: Fischart komplett aktualisieren (Admin)
+        - Species
+      summary: Fischart komplett aktualisieren
+      description: |
+        **Rolle: Admin**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -195,18 +214,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpeciesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
     patch:
       tags:
-      - Species
-      summary: Einzelne Felder der Fischart ändern (Admin)
+        - Species
+      summary: Einzelne Felder der Fischart ändern
+      description: |
+        **Rolle: Admin**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -220,59 +245,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpeciesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
     delete:
       tags:
-      - Species
-      summary: Fischart deaktivieren (Admin)
-      description: Setzt active=false – kein hartes Löschen.
+        - Species
+      summary: Fischart deaktivieren (Soft-Delete)
+      description: |
+        **Rolle: Admin**
+        Setzt active=false – kein hartes Löschen.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
-        # FIX #1: 200 → 204 No Content
         '204':
-          description: Fischart erfolgreich deaktiviert
+          $ref: '#/components/responses/NoContent'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/species/{id}/migration:
+
+  /species/{id}/migration:
     get:
       tags:
-      - Species
+        - Species
       summary: Saisonale Verbreitungszone einer Art abrufen
       description: |
-        **Externe Datenquelle: OBIS API** (`GET /occurrence`)
+        **Rolle: Gast (Ohne Login)**
+        **Externe Datenquelle: OBIS API**
 
-        Daten werden periodisch von `https://api.obis.org/v3/` abgerufen. Pro Art und Monat wird aus allen historischen Sichtungen (`decimalLatitude`, `decimalLongitude`) der räumliche Mittelpunkt berechnet. Das ergibt eine saisonale Verbreitungszone (Kreis) pro Monat als GeoJSON. Nicht Echtzeit.
-      security:
-      - BearerAuth: []
+        Gibt die saisonale Verbreitungszone der Art für den angegebenen Monat zurück.
+        Pro Art und Monat wird aus historischen Sichtungen der räumliche Mittelpunkt berechnet.
+        Das Ergebnis ist ein GeoJSON-Kreis (Point + radius_km).
       parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: thunnus-thynnus
-      - name: month
-        in: query
-        required: true
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 12
-        examples:
-          default:
-            value: 6
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: thunnus-thynnus
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          examples:
+            default:
+              value: 5
       responses:
         '200':
           description: Verbreitungszone als GeoJSON
@@ -280,31 +312,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MigrationZone'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/vessels:
+
+  /vessels:
     get:
       tags:
-      - Vessels
+        - Vessels
       summary: Fischereifahrzeuge in einer Region abrufen
       description: |
-        **Externe Datenquelle: AISstream.io** (WebSocket)
+        **Rolle: Gast (Ohne Login)**
+        **Externe Datenquelle: AISstream.io** (WebSocket, In-Memory-Cache)
 
-        Gibt alle aktuell bekannten Fischereifahrzeuge zurück. Unser Backend hält eine dauerhafte WebSocket-Verbindung zu `wss://stream.aisstream.io/v0/stream`. Eingehende Positionsdaten (`Latitude`, `Longitude`, `SpeedOverGround`) werden im In-Memory-Cache gehalten und hier gefiltert ausgegeben.
-      security:
-      - BearerAuth: []
+        Gibt alle aktuell bekannten Fischereifahrzeuge aus dem In-Memory-Cache zurück.
+        Die AIS-Subscription läuft im Hintergrund auf Bboxen, die aus den Zonen der aktiven Arten berechnet werden (Zone-Center ± radius_km).
       parameters:
-      - name: bbox
-        in: query
-        required: false
-        schema:
-          type: string
-        description: 'Bounding Box: lat1,lng1,lat2,lng2'
-        examples:
-          default:
-            value: 35.0,10.0,46.0,20.0
+        - name: bbox
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Optionaler Filter: lat1,lng1,lat2,lng2'
+          examples:
+            default:
+              value: 35.0,10.0,46.0,20.0
       responses:
         '200':
           description: Liste der Fischereifahrzeuge
@@ -314,24 +347,25 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/VesselResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /api/vessels/{mmsi}:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /vessels/{mmsi}:
     get:
       tags:
-      - Vessels
+        - Vessels
       summary: Einzelnes Schiff abrufen
-      security:
-      - BearerAuth: []
+      description: |
+        **Rolle: Gast (Ohne Login)**
       parameters:
-      - name: mmsi
-        in: path
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: '123456789'
+        - name: mmsi
+          in: path
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: '123456789'
       responses:
         '200':
           description: Schiff gefunden
@@ -339,50 +373,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VesselResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/overlap:
+
+  /overlaps:
     get:
       tags:
-      - Overlap
+        - Overlaps
       summary: Overlap-Score für alle Schiffe berechnen
       description: |
+        **Rolle: Gast (Ohne Login)**
         **Kern-Feature von OceanGuard. Aggregiert alle 3 externen APIs.**
 
-        Berechnet für jedes Fischereifahrzeug (aus dem AISstream Cache) in der Region den Overlap-Score zur angegebenen Art (aus dem OBIS Cache) unter Einbezug der aktuellen Wassertemperatur (von Open-Meteo).
-        
-        `Score = (D × 0.4) + (A × 0.35) + (T × 0.25)`
-      security:
-      - BearerAuth: []
+        Berechnet für jedes Fischereifahrzeug den Overlap-Score zur angegebenen Art.
+
+        **Score = D × (A × 0.6 + T × 0.4)**
+        - D = max(0, 1 - d / radius_km) — artspezifischer Cutoff, D=0 außerhalb der Zone
+        - A = max(0, 1 - sog / 10) — Aktivitätsfaktor via AIS-Geschwindigkeit
+        - T = max(0, 1 - |sst - temp_mid| / temp_range) — SST aus gecachtem 3-Punkte-Sampling
+
+        `month` ist optional — Default ist der aktuelle Monat.
       parameters:
-      - name: species
-        in: query
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: thunnus-thynnus
-      - name: month
-        in: query
-        required: true
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 12
-        examples:
-          default:
-            value: 6
-      - name: bbox
-        in: query
-        required: false
-        schema:
-          type: string
-        examples:
-          default:
-            value: 35.0,10.0,46.0,20.0
+        - name: species
+          in: query
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: thunnus-thynnus
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Monat (1–12). Default = aktueller Monat.
+          examples:
+            default:
+              value: 5
       responses:
         '200':
           description: Overlap-Ergebnisse für alle Schiffe
@@ -390,34 +420,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OverlapListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/overlap/{mmsi}:
+
+  /overlaps/{mmsi}:
     get:
       tags:
-      - Overlap
+        - Overlaps
       summary: Detail-Overlap-Score für ein einzelnes Schiff
-      security:
-      - BearerAuth: []
+      description: |
+        **Rolle: Gast (Ohne Login)**
+        Zeigt aufgeschlüsselt, wie sich der Overlap-Score (D, A, T) für ein bestimmtes Schiff zusammensetzt.
       parameters:
-      - name: mmsi
-        in: path
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: '123456789'
-      - name: species
-        in: query
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: thunnus-thynnus
+        - name: mmsi
+          in: path
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: '123456789'
+        - name: species
+          in: query
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: thunnus-thynnus
       responses:
         '200':
           description: Detail-Score mit D, A, T Komponenten
@@ -425,38 +457,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OverlapDetailResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/marine-conditions:
+
+  /marine-conditions:
     get:
       tags:
-      - Marine
+        - Marine
       summary: Aktuelle Meereskonditionen abrufen
       description: |
+        **Rolle: Gast (Ohne Login)**
         **Externe Datenquelle: Open-Meteo Marine API**
-        
-        Ruft `https://marine-api.open-meteo.com/v1/marine` ab. Gibt die aktuelle Sea Surface Temperature (SST) und Wellenhöhe zurück, um zu verifizieren, ob die Bedingungen für die gesuchte Fischart optimal sind.
-      security:
-      - BearerAuth: []
+
+        Gibt die aktuelle Sea Surface Temperature (SST) für einen Punkt zurück.
+        Intern wird die SST für den Overlap-Score aus dem 3-Punkte-Zonen-Cache verwendet.
+        Dieser Endpoint erlaubt den direkten Abruf für einen beliebigen Punkt.
       parameters:
-      - name: lat
-        in: query
-        required: true
-        schema:
-          type: number
-        examples:
-          default:
-            value: 41.5
-      - name: lng
-        in: query
-        required: true
-        schema:
-          type: number
-        examples:
-          default:
-            value: 15.3
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+          examples:
+            default:
+              value: 41.5
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+          examples:
+            default:
+              value: 15.3
       responses:
         '200':
           description: Meereskonditionen
@@ -464,44 +498,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MarineConditionsResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /api/alerts:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /alerts:
     get:
       tags:
-      - Alerts
+        - Alerts
       summary: Warnungen für kritische Overlap-Situationen
-      security:
-      - BearerAuth: []
+      description: |
+       **Rolle: Gast (Ohne Login)**
+        Liefert alle Schiffe mit Score ≥ 0.4 (WARNUNG oder KRITISCH).
+        Schiffe mit Score < 0.4 (GERING) werden nicht zurückgegeben.
+        Monat = aktueller Monat (automatisch).
       parameters:
-      - name: species
-        in: query
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: thunnus-thynnus
-      - name: bbox
-        in: query
-        required: false
-        schema:
-          type: string
-        examples:
-          default:
-            value: 35.0,10.0,46.0,20.0
-      # FIX #6: month Parameter hinzugefügt
-      - name: month
-        in: query
-        required: false
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 12
-        description: Monat (Standard: aktueller Monat)
-        examples:
-          default:
-            value: 6
+        - name: species
+          in: query
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: thunnus-thynnus
       responses:
         '200':
           description: Liste der Warnungen
@@ -511,15 +529,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/AlertResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  /api/favorites/species:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /favorites/species:
     get:
       tags:
-      - Favorites
+        - Favorites
       summary: Gespeicherte Arten-Favoriten abrufen
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Liste der Favoriten
@@ -533,10 +554,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     post:
       tags:
-      - Favorites
+        - Favorites
       summary: Fischart als Favorit speichern
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -550,41 +573,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FavoriteSpeciesResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          description: Bereits als Favorit gespeichert
-  /api/favorites/species/{species_id}:
-    delete:
-      tags:
-      - Favorites
-      summary: Arten-Favorit entfernen
-      security:
-      - BearerAuth: []
-      parameters:
-      - name: species_id
-        in: path
-        required: true
-        schema:
-          type: string
-        examples:
-          default:
-            value: thunnus-thynnus
-      responses:
-        # FIX #1: 200 → 204 No Content
-        '204':
-          description: Favorit erfolgreich entfernt
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/favorites/regions:
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /favorites/species/{species_id}:
+    delete:
+      tags:
+        - Favorites
+      summary: Arten-Favorit entfernen
+      description: |
+        **Rolle: User (Mit Login)**
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: species_id
+          in: path
+          required: true
+          schema:
+            type: string
+          examples:
+            default:
+              value: thunnus-thynnus
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /favorites/regions:
     get:
       tags:
-      - Favorites
+        - Favorites
       summary: Gespeicherte Regions-Favoriten abrufen
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Liste der Regions-Favoriten
@@ -598,10 +630,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     post:
       tags:
-      - Favorites
+        - Favorites
       summary: Region als Favorit speichern
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -615,39 +649,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FavoriteRegionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/favorites/regions/{id}:
+
+  /favorites/regions/{id}:
     delete:
       tags:
-      - Favorites
+        - Favorites
       summary: Regions-Favorit entfernen
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        examples:
-          default:
-            value: 1
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          examples:
+            default:
+              value: 1
       responses:
-        # FIX #1: 200 → 204 No Content
         '204':
-          description: Regions-Favorit erfolgreich entfernt
+          $ref: '#/components/responses/NoContent'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/reports:
+
+  /reports:
     get:
       tags:
-      - Reports
+        - Reports
       summary: Alle gespeicherten Reports abrufen
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Liste der Reports
@@ -661,10 +702,13 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     post:
       tags:
-      - Reports
+        - Reports
       summary: Overlap-Snapshot als Report speichern
+      description: |
+        **Rolle: User (Mit Login)**
+        Speichert eine aktuelle Overlap-Berechnung als Report ab.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -678,25 +722,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/reports/compare:
+
+  /reports/compare:
     get:
       tags:
-      - Reports
+        - Reports
       summary: Zwei Reports vergleichen
+      description: |
+        **Rolle: User (Mit Login)**
+        Stellt zwei gespeicherte Reports gegenüber. Beide Reports müssen die gleiche Art haben.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       parameters:
-      - name: ids
-        in: query
-        required: true
-        schema:
-          type: string
-        description: Kommagetrennte Report-IDs
-        examples:
-          default:
-            value: 1,2
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Kommagetrennte Report-IDs
+          examples:
+            default:
+              value: 1,2
       responses:
         '200':
           description: Vergleich der beiden Reports
@@ -704,26 +754,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportCompareResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/reports/{id}:
+
+  /reports/{id}:
     get:
       tags:
-      - Reports
+        - Reports
       summary: Einzelnen Report abrufen
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        examples:
-          default:
-            value: 1
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          examples:
+            default:
+              value: 1
       responses:
         '200':
           description: Report gefunden
@@ -737,34 +792,38 @@ paths:
           $ref: '#/components/responses/NotFound'
     delete:
       tags:
-      - Reports
+        - Reports
       summary: Report löschen
+      description: |
+        **Rolle: User (Mit Login)**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        examples:
-          default:
-            value: 1
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          examples:
+            default:
+              value: 1
       responses:
-        # FIX #1: 200 → 204 No Content
         '204':
-          description: Report erfolgreich gelöscht
+          $ref: '#/components/responses/NoContent'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/admin/users:
+
+  /admin/users:
     get:
       tags:
-      - Admin
-      summary: Alle User abrufen (Admin)
+        - Admin
+      summary: Alle User abrufen
+      description: |
+        **Rolle: Admin**
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: Liste aller User
@@ -778,48 +837,55 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /api/admin/users/{id}:
+
+  /admin/users/{id}:
     delete:
       tags:
-      - Admin
-      summary: User löschen (Admin)
+        - Admin
+      summary: User löschen
+      description: |
+        **Rolle: Admin**
+        Admin kann sich nicht selbst löschen (→ 403).
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        examples:
-          default:
-            value: 1
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          examples:
+            default:
+              value: 1
       responses:
-        # FIX #1: 200 → 204 No Content
         '204':
-          description: User erfolgreich gelöscht
+          $ref: '#/components/responses/NoContent'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/admin/users/{id}/role:
+
+  /admin/users/{id}/role:
     patch:
       tags:
-      - Admin
-      summary: Rolle eines Users ändern (Admin)
+        - Admin
+      summary: Rolle eines Users ändern
+      description: |
+        **Rolle: Admin**
+        Aktualisiert die Zugriffsberechtigungen (guest, user, admin) eines Nutzers.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        examples:
-          default:
-            value: 1
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          examples:
+            default:
+              value: 1
       requestBody:
         required: true
         content:
@@ -830,11 +896,11 @@ paths:
                 role:
                   type: string
                   enum:
-                  - guest
-                  - user
-                  - admin
+                    - guest
+                    - user
+                    - admin
               required:
-              - role
+                - role
       responses:
         '200':
           description: Rolle aktualisiert
@@ -842,19 +908,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/admin/system:
+
+  /admin/system:
     get:
       tags:
-      - Admin
-      summary: System-Status abrufen (Admin)
+        - Admin
+      summary: System-Status abrufen
+      description: |
+        **Rolle: Admin**
+        Gibt Server-Metriken, Cache-Stats und Uptime zurück.
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       responses:
         '200':
           description: System-Status
@@ -866,14 +938,26 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: Firebase ID Token
-      description: Firebase ID Token im Authorization Header
+      description: Firebase ID Token im Authorization Header. Token via get_token.py holen.
+
   responses:
+    BadRequest:
+      description: Ungültige Anfrage (fehlende oder falsche Parameter)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                detail: Bad request or validation error
     Unauthorized:
       description: Kein oder ungültiger Token
       content:
@@ -904,12 +988,36 @@ components:
             default:
               value:
                 detail: Not found
+    Conflict:
+      description: Ressourcenkonflikt (Datensatz existiert bereits)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                detail: Resource already exists
+    UnprocessableEntity:
+      description: Semantische Validierungsfehler in der Payload
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                detail: Unprocessable entity
+    NoContent:
+      description: Erfolgreich ausgeführt, keine Daten zurückgegeben
+
   schemas:
     ErrorResponse:
       type: object
       properties:
         detail:
           type: string
+
     SyncRequest:
       type: object
       properties:
@@ -917,7 +1025,8 @@ components:
           type: string
           examples: ["John"]
       required:
-      - name
+        - name
+
     UserResponse:
       type: object
       properties:
@@ -926,60 +1035,29 @@ components:
           examples: [1]
         email:
           type: string
-          examples: ["john@johnpork.com"]
+          examples: ["john@example.com"]
         name:
           type: string
-          examples: ["John"]
+          examples: ["Jane Doe"]
+        firebase_uid:
+          type: string
+          examples: ["firebase_uid_12345"]
         role:
           type: string
           enum:
-          - guest
-          - user
-          - admin
-          examples: ["user"]
+            - guest
+            - user
+            - admin
+          default: user
         created_at:
           type: string
           format: date-time
-    SpeciesResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          examples: ["thunnus-thynnus"]
-        common_name:
-          type: string
-          examples: ["Roter Thun"]
-        scientific_name:
-          type: string
-          examples: ["Thunnus thynnus"]
-        region:
-          type: string
-          examples: ["Mittelmeer"]
-        temp_min:
-          type: number
-          examples: [15.0]
-        temp_max:
-          type: number
-          examples: [25.0]
-        # FIX #5: temp_mid Beispielwert 20.0 → 22.0
-        temp_mid:
-          type: number
-          examples: [22.0]
-        temp_range:
-          type: number
-          examples: [10.0]
-        radius_km:
-          type: integer
-          examples: [200]
-        active:
-          type: boolean
-          examples: [true]
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
+      required:
+        - id
+        - email
+        - name
+        - firebase_uid
+
     SpeciesCreate:
       type: object
       properties:
@@ -994,27 +1072,37 @@ components:
           examples: ["Thunnus thynnus"]
         region:
           type: string
-          examples: ["Mittelmeer"]
+          examples: ["Atlantik / Mittelmeer"]
         temp_min:
           type: number
+          examples: [15.0]
         temp_max:
           type: number
+          examples: [25.0]
         temp_mid:
           type: number
+          examples: [22.0]
+          description: Temperatur-Optimum der Art (Mitte des Optimalbereichs)
         temp_range:
           type: number
+          examples: [10.0]
+          description: Toleranzbreite R für T-Faktor im Overlap-Score
         radius_km:
           type: integer
           default: 200
+          description: Zonen-Radius UND D-Cutoff im Score (Doppelfunktion)
       required:
-      - id
-      - common_name
-      - scientific_name
-      - region
+        - id
+        - common_name
+        - scientific_name
+        - region
+
     SpeciesPatch:
       type: object
       properties:
         common_name:
+          type: string
+        scientific_name:
           type: string
         region:
           type: string
@@ -1030,10 +1118,39 @@ components:
           type: integer
         active:
           type: boolean
-    # FIX #4: MigrationZone als GeoJSON Feature
+
+    SpeciesResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        common_name:
+          type: string
+        scientific_name:
+          type: string
+        region:
+          type: string
+        temp_min:
+          type: number
+        temp_max:
+          type: number
+        temp_mid:
+          type: number
+        temp_range:
+          type: number
+        radius_km:
+          type: integer
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
     MigrationZone:
       type: object
-      description: Saisonale Verbreitungszone als GeoJSON Feature (Leaflet.js-kompatibel)
       properties:
         type:
           type: string
@@ -1048,9 +1165,7 @@ components:
               type: array
               items:
                 type: number
-              description: "[lng, lat] – GeoJSON Konvention"
-              examples:
-                - [14.2, 38.5]
+              examples: [[6.3, 40.1]]
         properties:
           type: object
           properties:
@@ -1059,272 +1174,237 @@ components:
               examples: ["thunnus-thynnus"]
             month:
               type: integer
-              examples: [6]
+              examples: [5]
             radius_km:
               type: integer
               examples: [200]
             sighting_count:
               type: integer
-              examples: [142]
+              examples: [143]
+
     VesselResponse:
       type: object
       properties:
         mmsi:
           type: string
           examples: ["123456789"]
-        name:
+        vessel_name:
           type: string
-          examples: ["ATLANTIC FISHER"]
-        latitude:
+          examples: ["FV Atlantic Star"]
+        lat:
           type: number
-          examples: [41.5]
-        longitude:
+          examples: [42.3]
+        lng:
           type: number
-          examples: [15.3]
-        speed_knots:
+          examples: [5.1]
+        sog:
           type: number
-          examples: [3.2]
-        navigational_status:
-          type: integer
-          examples: [7]
-          description: 7 = Engaged in Fishing
-        last_updated:
-          type: string
-          format: date-time
-    OverlapListResponse:
-      type: object
-      properties:
-        species_id:
-          type: string
-          examples: ["thunnus-thynnus"]
-        month:
-          type: integer
-          examples: [6]
-        vessel_count:
-          type: integer
-          examples: [12]
-        avg_score:
-          type: number
-          examples: [0.61]
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/OverlapDetailResponse'
+          examples: [2.4]
+
     OverlapDetailResponse:
       type: object
       properties:
         mmsi:
           type: string
-          examples: ["123456789"]
         vessel_name:
           type: string
-          examples: ["ATLANTIC FISHER"]
+        lat:
+          type: number
+        lng:
+          type: number
+        sog:
+          type: number
         score:
           type: number
-          examples: [0.74]
-          description: 'Gesamtscore: 0–1'
-        risk_level:
+          examples: [0.87]
+          description: "Score = D × (A × 0.6 + T × 0.4)"
+        D:
+          type: number
+          description: "Distanz-Faktor: max(0, 1 - d/radius_km)"
+        A:
+          type: number
+          description: "Aktivitäts-Faktor: max(0, 1 - sog/10)"
+        T:
+          type: number
+          description: "Temperatur-Faktor: max(0, 1 - |sst-temp_mid|/temp_range)"
+        level:
           type: string
-          enum:
-          - KRITISCH
-          - WARNUNG
-          - GERING
+          enum: ["GERING", "WARNUNG", "KRITISCH"]
           examples: ["KRITISCH"]
-        distance_score:
-          type: number
-          examples: [0.85]
-          description: D-Komponente (Distanz)
-        activity_score:
-          type: number
-          examples: [0.68]
-          description: A-Komponente (Aktivität/Geschwindigkeit)
-        temperature_score:
-          type: number
-          examples: [0.71]
-          description: T-Komponente (Wassertemperatur)
-        distance_km:
-          type: number
-          examples: [15.3]
-        speed_knots:
-          type: number
-          examples: [3.2]
-        sea_surface_temp:
-          type: number
-          examples: [19.8]
+
+    OverlapListResponse:
+      type: object
+      properties:
+        vessels:
+          type: array
+          items:
+            $ref: '#/components/schemas/OverlapDetailResponse'
+        stats:
+          type: object
+          properties:
+            count:
+              type: integer
+            avg_score:
+              type: number
+            max_score:
+              type: number
+        zone:
+          type: object
+          properties:
+            center_lat:
+              type: number
+            center_lng:
+              type: number
+            radius_km:
+              type: integer
+            month:
+              type: integer
+
     MarineConditionsResponse:
       type: object
       properties:
-        latitude:
+        sst:
           type: number
-          examples: [41.5]
-        longitude:
-          type: number
-          examples: [15.3]
-        sea_surface_temperature:
-          type: number
-          examples: [19.8]
-        wave_height:
-          type: number
-          examples: [1.2]
-        timestamp:
-          type: string
-          format: date-time
+          description: Sea Surface Temperature in °C
+          examples: [21.5]
+
     AlertResponse:
       type: object
       properties:
         mmsi:
           type: string
-          examples: ["123456789"]
         vessel_name:
           type: string
-          examples: ["ATLANTIC FISHER"]
-        species_id:
-          type: string
-          examples: ["thunnus-thynnus"]
         score:
           type: number
-          examples: [0.82]
-        risk_level:
+        level:
           type: string
-          enum:
-          - KRITISCH
-          - WARNUNG
+          enum: ["WARNUNG", "KRITISCH"]
           examples: ["KRITISCH"]
-        message:
-          type: string
-          examples: ["Fischereifahrzeug operiert in kritischer Verbreitungszone des Roten Thuns"]
+        lat:
+          type: number
+        lng:
+          type: number
+
     FavoriteSpeciesCreate:
       type: object
       properties:
         species_id:
           type: string
-          examples: ["thunnus-thynnus"]
       required:
-      - species_id
+        - species_id
+
     FavoriteSpeciesResponse:
       type: object
       properties:
         id:
           type: integer
-          examples: [1]
+        user_id:
+          type: integer
         species_id:
           type: string
-          examples: ["thunnus-thynnus"]
         created_at:
           type: string
           format: date-time
+
     FavoriteRegionCreate:
       type: object
       properties:
         name:
           type: string
-          examples: ["Mittelmeer Süd"]
         bbox:
-          type: array
-          items:
-            type: number
-          examples:
-            - [35.0, 10.0, 46.0, 20.0]
+          type: string
+          description: "JSON: [lat1, lng1, lat2, lng2]"
       required:
-      - name
-      - bbox
+        - name
+        - bbox
+
     FavoriteRegionResponse:
       type: object
       properties:
         id:
           type: integer
-          examples: [1]
+        user_id:
+          type: integer
         name:
           type: string
-          examples: ["Mittelmeer Süd"]
         bbox:
-          type: array
-          items:
-            type: number
-          examples:
-            - [35.0, 10.0, 46.0, 20.0]
+          type: string
         created_at:
           type: string
           format: date-time
-    # FIX #3: snapshot aus required entfernt – wird vom Backend intern berechnet
+
     ReportCreate:
       type: object
       properties:
         species_id:
           type: string
-          examples: ["thunnus-thynnus"]
         bbox:
-          type: array
-          items:
-            type: number
-          examples:
-            - [35.0, 10.0, 46.0, 20.0]
+          type: string
         month:
           type: integer
-          examples: [6]
       required:
-      - species_id
-      - bbox
-      - month
+        - species_id
+        - bbox
+        - month
+
     ReportResponse:
       type: object
       properties:
         id:
           type: integer
-          examples: [1]
+        user_id:
+          type: integer
         species_id:
           type: string
-          examples: ["thunnus-thynnus"]
         bbox:
-          type: array
-          items:
-            type: number
-          examples:
-            - [35.0, 10.0, 46.0, 20.0]
+          type: string
         month:
           type: integer
-          examples: [6]
+        snapshot:
+          type: string
+          description: "JSON stringified OverlapListResponse"
         vessel_count:
           type: integer
-          examples: [12]
         avg_score:
           type: number
-          examples: [0.61]
         created_at:
           type: string
           format: date-time
+
     ReportCompareResponse:
       type: object
       properties:
-        report_a:
+        report_1:
           $ref: '#/components/schemas/ReportResponse'
-        report_b:
+        report_2:
           $ref: '#/components/schemas/ReportResponse'
         score_diff:
           type: number
-          examples: [0.13]
-          description: Differenz avg_score (A - B)
         vessel_count_diff:
           type: integer
-          examples: [3]
+
     SystemStatusResponse:
       type: object
       properties:
-        status:
-          type: string
-          examples: ["ok"]
-        ais_connected:
-          type: boolean
-          examples: [true]
-        vessels_tracked:
+        user_count:
           type: integer
-          examples: [47]
+          examples: [42]
         species_count:
           type: integer
           examples: [4]
-        user_count:
+        active_vessels:
           type: integer
-          examples: [12]
+          examples: [17]
+        cached_zones:
+          type: integer
+          examples: [48]
+        ais_connected:
+          type: boolean
+          examples: [true]
+        last_ais_message_at:
+          type: string
+          format: date-time
         uptime_seconds:
           type: integer
           examples: [3600]

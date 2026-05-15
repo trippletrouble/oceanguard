@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: ***ENTFERNT*** = 1440
     database_url: str = "sqlite+aiosqlite:///./oceanguard.db"
     aisstream_api_key: ***ENTFERNT*** = ""
+    firebase_api_key: ***ENTFERNT*** = ""
 
     class Config:
         env_file = ".env"
