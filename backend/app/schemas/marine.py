@@ -4,4 +4,4 @@ class MarineResponse(BaseModel):
     lat: float
     lng: float
     
-    sea_surface_temperature: float
+    sea_surface_temperature: Optional[float] = None

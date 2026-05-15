@@ -1,6 +1,7 @@
 import time
 import httpx
 from datetime import datetime, timezone
+from fastapi import HTTPException
 
 sst_cache: dict[str, dict] = {}
 CACHE_TTL = 60*60*24
@@ -29,8 +30,16 @@ async def fetch_sst(lat: float, lng: float):
     except ValueError:
         index = 0
 
+    sst = data["hourly"]["sea_surface_temperature"][index]
+
+    if sst is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No marine data available for these coordinates."
+        )
+
     return {
-        "sea_surface_temperature": data["hourly"]["sea_surface_temperature"][index]
+        "sea_surface_temperature": sst
     }
 
 async def get_sst(lat: float, lng: float):
