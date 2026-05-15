@@ -12,10 +12,7 @@ async def fetch_sst(lat: float, lng: float):
     params = {
         "latitude": lat,
         "longitude": lng,
-        "hourly": [
-            "sea_surface_temperature,"
-            "wave_height"
-        ],
+        "hourly": "sea_surface_temperature",
         "timezone": "GMT"
     }
 
@@ -33,8 +30,7 @@ async def fetch_sst(lat: float, lng: float):
         index = 0
 
     return {
-        "sea_surface_temperature": data["hourly"]["sea_surface_temperature"][index],
-        "wave_height": data["hourly"]["wave_height"][index]
+        "sea_surface_temperature": data["hourly"]["sea_surface_temperature"][index]
     }
 
 async def get_sst(lat: float, lng: float):

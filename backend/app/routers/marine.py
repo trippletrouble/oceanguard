@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from app.services.meteo_service import get_sst
 from app.schemas.marine import MarineResponse
 
@@ -9,8 +9,6 @@ async def marine_conditions(
     lat: float = Query(...),
     lng: float = Query(...)
 ):
-    # if lat is None or lng is None:
-    #     raise HTTPException(status_code=400, detail="lat (latitude) and lng (longitude) is required")
     
     data = await get_sst(lat, lng)
 
