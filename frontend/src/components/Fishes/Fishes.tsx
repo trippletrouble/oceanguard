@@ -61,7 +61,7 @@ export default function Fishes() {
           {FISHES.map((fish, index) => (
             <div key={index} className="group relative">
               <div className="hover-trigger peer absolute lg:block inset-8 z-50" />
-              <div className={`hidden lg:flex absolute bottom-6 right-6 z-20 items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md transition-all duration-700 pointer-events-none peer-hover:opacity-0 peer-hover:scale-95 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+              <div className={`hidden lg:flex absolute bottom-6 right-6 z-20 items-center gap-2 px-3 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md transition-all duration-700 pointer-events-none peer-hover:opacity-0 peer-hover:scale-95 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/70">
                   See Info
