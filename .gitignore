@@ -17,6 +17,5 @@ frontend/dist/
 .snapshot-cache*
 backend/reset_species.py
 
-
 backend/app/oceanguard.db
 backend/app/firebase-service-account.json
