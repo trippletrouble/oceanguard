@@ -1,10 +1,13 @@
-import Header from "../components/Header"
-import { Fishes } from "../components/Fishes"
+import Header from "@/components/Header";
+import { Fishes } from "../components/Fishes";
 
 export default function LandingPage() {
   return (
     <>
-      <Fishes />
+      <Header />
+      <div className="pt-32">
+        <Fishes />
+      </div>
     </>
-  )
+  );
 }

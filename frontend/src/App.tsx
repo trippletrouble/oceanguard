@@ -1,17 +1,21 @@
-import './App.css'
-import Header from './components/Header'
-import LandingPage from './pages/LandingPage'
+import "./App.css";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import LandingPage from "./pages/LandingPage";
+import MapPage from "./pages/MapPage";
 
 function App() {
   return (
-    <div className='w-full min-h-screen'>
-      <Header />
-
-      <main className='pt-32'>
-        <LandingPage />
-      </main>
-    </div>
-  )
+    <Router>
+      <div className="w-full min-h-screen">
+        <main>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/map" element={<MapPage />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;
