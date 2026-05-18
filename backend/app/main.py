@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
         await obis_service.refresh_zones(species_id)
 
     #AIS stream
-    asyncio.create_task(ais_service.connect_ais_stream("sardina-pilchardus"))
+    asyncio.create_task(ais_service.connect_ais_stream())
 
     yield
 

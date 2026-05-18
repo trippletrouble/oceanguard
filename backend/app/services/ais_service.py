@@ -4,35 +4,24 @@ import json
 from datetime import datetime, timezone, timedelta
 import os
 from dotenv import load_dotenv
+from app.services.obis_service import obis_service
 
 load_dotenv()
-
-SPECIES_BOUNDING_BOXES = {
-    "thunnus-thynnus": [[30, -5], [46, 36]],
-    "gadus-morhua": [[30, -5], [46, 36]],
-    "sardina-pilchardus": [[45, -20], [70, 20]],
-    "xiphias-gladius": [[35, -15], [60, 10]],
-}
 
 class AISService:
     
     def __init__(self):
         self.api_key = ***ENTFERNT***"AISSTREAM_API_KEY")
         self.vessel_cache: dict[int, dict] = {}
-        self.active_species = None
+        self.ais_connected: bool = False
+        self.last_ais_message_at: datetime | None = None
 
     #AIS Stream Connection
-    async def connect_ais_stream(self, species_id: str):
+    async def connect_ais_stream(self):
         URL = "wss://stream.aisstream.io/v0/stream"
-        self.active_species = species_id
         
         if self.api_key == "dein-aisstream-key-hier" or not self.api_key:
             print("API Key missing, update in .env")
-            return
-        
-        bbox = SPECIES_BOUNDING_BOXES.get(species_id)
-        if not bbox:
-            print(f"Unknown species: {species_id}")
             return
 
         while True:
@@ -44,19 +33,23 @@ class AISService:
                     ping_interval=20,
                     ping_timeout=20
                 ) as websocket:
+                    self.ais_connected = True
                     
                     subscribe_message = {"APIKey": self.api_key,
-                                        "BoundingBoxes": [bbox],
+                                        "BoundingBoxes": self.get_all_bboxes(),
                                         "FilterMessageTypes": ["PositionReport"]}
                     subscribe_message_json = json.dumps(subscribe_message)
                     await websocket.send(subscribe_message_json)
                     print("Subscribed to AIS stream")
 
                     async for message_json in websocket:
+                        self.last_ais_message_at = datetime.now(timezone.utc)
+                        
                         message = json.loads(message_json)
                         await self.handle_message(message)
 
             except Exception as e:
+                self.ais_connected = False
                 print(f"AIS stream error: {e}")
                 await asyncio.sleep(5)
 
@@ -85,12 +78,33 @@ class AISService:
 
         #self.log_vessel(mmsi)
 
-    async def restart_stream(self, species_id: str):
-        self.vessel_cache.clear()
+    def get_all_bboxes(self) -> list[list]:
+        bboxes = []
+        month = datetime.now().month
 
-        asyncio.create_task(
-            self.connect_ais_stream(species_id)
-        )
+        for species_id in obis_service.SPECIES_CONFIG.keys():
+            zones = obis_service.get_zones(species_id)
+            if not zones:
+                continue
+
+            zone = zones.get(month)
+            if not zone:
+                continue
+
+            center = zone.get("center")
+            if not center:
+                continue
+
+            radius_km = zone.get("radius_km", 200)
+            buffer = radius_km / 111
+            lat = center["lat"]
+            lng = center["lng"]
+            bboxes.append([
+                [lat - buffer, lng - buffer],
+                [lat + buffer, lng + buffer]
+            ])
+
+        return bboxes if bboxes else [[[30, -10], [50, 40]]]
 
     #Cache Helpers    
     def get_all_vessels(self):
@@ -108,6 +122,60 @@ class AISService:
         print(
             f"{vessel.get('name', 'Unknown')}  |  {vessel.get('lat', 'N/A')}, {vessel.get('lng', 'N/A')}  |  {vessel.get('sog', 'N/A')} kn"
         )
+
+    #Cache Filtering
+    def vessel_in_bbox(self, vessel: dict, bbox: list[list]) -> bool:
+        lat = vessel.get("lat")
+        lng = vessel.get("lng")
+
+        if lat is None or lng is None:
+            return False
+
+        min_lat, min_lng = bbox[0]
+        max_lat, max_lng = bbox[1]
+
+        return (
+            min_lat <= lat <= max_lat and
+            min_lng <= lng <= max_lng
+        )
+    
+    def get_vessels_for_species(self, species_id: str):
+        month = datetime.now().month
+
+        zones = obis_service.get_zones(species_id)
+        if not zones:
+            print(f"[DEBUG] Unknown species or no OBIS zones: {species_id}")
+            return []
+
+        zone = zones.get(month)
+        if not zone:
+            print(f"[DEBUG] No zone for current month ({month}) for species: {species_id}")
+            return []
+
+        center = zone.get("center")
+        if not center:
+            return []
+        
+        radius_km = zone.get("radius_km", 200)
+        buffer = radius_km / 111
+        bbox = [
+            [center["lat"] - buffer, center["lng"] - buffer],
+            [center["lat"] + buffer, center["lng"] + buffer]
+        ]
+        
+        print(f"[DEBUG] Filtering species: {species_id}")
+        print(f"[DEBUG] Using bbox(OBIS): {bbox}")
+        
+        vessels = []
+
+        for vessel in self.vessel_cache.values():
+            if self.vessel_in_bbox(vessel, bbox):
+                vessels.append(vessel)
+
+        print(f"[DEBUG] Total matched: {len(vessels)}")
+
+        return vessels
+
 
     #Cache-Cleanup
     def cleanup_old_vessels(self):
