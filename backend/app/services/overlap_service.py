@@ -75,7 +75,7 @@ def compute_single_score(vessel: dict, zone: dict, sst: float | None, species: S
         "distance_km": round(distance_km, 2)
     }
 
-async def compute_overlap(species_id: int, month: int, db: AsyncSession) -> dict:
+async def compute_overlap(species_id: str, month: int, db: AsyncSession) -> dict:
     # Look up targeted species parameters
     stmt = select(Species).where(Species.id == species_id, Species.active == True)
     result = await db.execute(stmt)
@@ -85,7 +85,7 @@ async def compute_overlap(species_id: int, month: int, db: AsyncSession) -> dict
         raise HTTPException(status_code=404, detail="Active target species profile not found")
 
     # Fetch tracking zones from OBIS
-    zones = obis_service.get_zones(str(species_id))
+    zones = obis_service.get_zones(species_id)
     if not zones:
         raise HTTPException(status_code=404, detail="No historical tracking profiles registered for this species")
 
@@ -108,7 +108,7 @@ async def compute_overlap(species_id: int, month: int, db: AsyncSession) -> dict
         logger.warning(f"Unable to retrieve meteo metrics for tracking coordinate [{c_lat}, {c_lng}]: {e}")
 
     # Extract target vessels within the specialized species box limits
-    vessels = ais_service.get_vessels_for_species(str(species_id))
+    vessels = ais_service.get_vessels_for_species(species_id)
 
     # Iteration through all vessels and calculation of threat level for each vessel
     scored_vessels = []
