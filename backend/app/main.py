@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.database import init_db, async_session
 from app.models.species import Species
-from app.routers import auth, species, marine, vessels
+from app.routers import auth, species, marine, vessels, overlap
 from app.services.obis_service import obis_service
 from app.services.ais_service import ais_service
 
@@ -82,6 +82,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(species.router, prefix="/species", tags=["Species"])
 app.include_router(marine.router, prefix="/marine-conditions", tags=["Marine"])
 app.include_router(vessels.router, prefix="/vessels", tags=["Vessels"])
+app.include_router(overlap.router, tags=["Overlap Analysis"])
 
 
 @app.get("/", tags=["Root"])
