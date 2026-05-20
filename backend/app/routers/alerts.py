@@ -1,3 +1,52 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 
-router = APIRouter()
+from app.database import get_db
+from app.services.overlap_service import compute_overlap
+
+router = APIRouter(prefix="/api/alerts", tags=["Threat Alerts"])
+
+
+@router.get("")
+# We're getting all the dangerous vessels with warning and critical levels
+async def get_active_threat_alerts(
+        species: str = Query(
+            ...,
+            description="The species ID code (e.g., 'thunnus-thynnus')"
+        ),
+        db: AsyncSession = Depends(get_db)
+):
+    current_month = datetime.now().month
+
+    try:
+        analysis_payload = await compute_overlap(
+            species_id=species,
+            month=current_month,
+            db=db
+        )
+
+        tracked_vessels = analysis_payload.get("tracked_vessels", [])
+
+        actionable_alerts = [
+            {
+                "mmsi": str(vessel["mmsi"]),
+                "vessel_name": vessel["vessel_name"],
+                "species_id": species,
+                "score": vessel["score"],
+                "risk_level": vessel["level"],
+                "message": f"Fishing vessel operating inside critical distribution zone of species: {species}"
+            }
+            for vessel in tracked_vessels
+            if vessel.get("score", 0.0) >= 0.4 or vessel.get("level") in ["WARNING", "CRITICAL"]
+        ]
+
+        return actionable_alerts
+
+    except HTTPException as http_err:
+        raise http_err
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to compile the active threat intelligence feed: {str(e)}"
+        )
