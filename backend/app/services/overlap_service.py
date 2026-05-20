@@ -65,12 +65,10 @@ def compute_single_score(vessel: dict, zone: dict, sst: float | None, species: S
         "lat": v_lat,
         "lng": v_lng,
         "sog": v_sog,
+        "D": round(D, 4),
+        "A": round(A, 4),
+        "T": round(T, 4),
         "score": score,
-        "factors": {
-            "distance_factor": round(D, 4),
-            "activity_factor": round(A, 4),
-            "temperature_factor": round(T, 4)
-        },
         "level": level,
         "distance_km": round(distance_km, 2)
     }
