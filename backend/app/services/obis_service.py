@@ -1,5 +1,7 @@
 import httpx
 import logging
+import json
+import asyncio
 from datetime import datetime
 from typing import List, Dict, Optional
 
@@ -35,6 +37,9 @@ class OBISService:
     def __init__(self):
         # In-Memory Cache: Dict[species_id, Dict[month, zone_data]]
         self._zone_cache: Dict[str, Dict[int, Dict]] = {}
+        self.max_retries = 3
+        self.initial_backoff = 1.0  # seconds
+        self._is_ready = False  # Flag to indicate if the cache is warmed up
 
     async def fetch_occurrences(
             self,
@@ -54,46 +59,157 @@ class OBISService:
 
         params = {name: value for name, value in raw_params.items() if value is not None}
 
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.get(self.BASE_URL, params=params)
-                response.raise_for_status()
-                data = response.json()
-                results = data.get("results", [])
+        for attempt in range(self.max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    response = await client.get(self.BASE_URL, params=params)
 
-                parsed_occurrences = []
-                for item in results:
-                    lat = item.get("decimalLatitude")
-                    lng = item.get("decimalLongitude")
-                    date = item.get("eventDate")
+                    # Error 429: Too Many Requests
+                    if response.status_code == 429:
+                        retry_after = int(response.headers.get("Retry-After", 60))
+                        logger.warning(
+                            f"OBIS Rate-Limited (429) for {scientific_name}. Retry-After: {retry_after}s. Attempt {attempt + 1}/{self.max_retries}")
+                        if attempt < self.max_retries - 1:
+                            await asyncio.sleep(min(retry_after, 120))
+                            continue
+                        return []
 
-                    if lat is not None and lng is not None:
-                        parsed_occurrences.append({
-                            "decimalLatitude": lat,
-                            "decimalLongitude": lng,
-                            "eventDate": date
-                        })
+                    response.raise_for_status()
 
-                return parsed_occurrences
+                    if not response.content:
+                        logger.warning(f"OBIS Empty Body Response for {scientific_name}")
+                        return []
 
-        except (httpx.TimeoutException, httpx.HTTPStatusError) as e:
-            logger.error(f"OBIS API Error for {scientific_name}: {str(e)}")
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error in OBIS service: {str(e)}")
-            return []
+                    data = response.json()
+
+                    if not isinstance(data, dict):
+                        logger.error(
+                            f"OBIS Invalid Response Type for {scientific_name}: Expected dict, got {type(data)}")
+                        return []
+
+                    results = data.get("results")
+
+                    if not results:
+                        logger.warning(f"OBIS Empty Results for {scientific_name}: API returned no sightings")
+                        return []
+
+                    if not isinstance(results, list):
+                        logger.error(
+                            f"OBIS Invalid Results Type for {scientific_name}: Expected list, got {type(results)}")
+                        return []
+
+                    parsed_occurrences = []
+                    for item in results:
+                        try:
+                            if not isinstance(item, dict):
+                                continue
+
+                            lat = item.get("decimalLatitude")
+                            lng = item.get("decimalLongitude")
+
+                            if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+                                continue
+
+                            date = item.get("eventDate")
+                            parsed_occurrences.append({
+                                "decimalLatitude": lat,
+                                "decimalLongitude": lng,
+                                "eventDate": date
+                            })
+                        except (KeyError, TypeError, ValueError):
+                            continue
+
+                    logger.info(f"OBIS Success: Fetched {len(parsed_occurrences)} occurrences for {scientific_name}")
+                    return parsed_occurrences
+
+            except httpx.TimeoutException:
+                logger.warning(f"OBIS Timeout for {scientific_name}. Attempt {attempt + 1}/{self.max_retries}")
+                if attempt < self.max_retries - 1:
+                    backoff = self.initial_backoff * (2 ** attempt)
+                    await asyncio.sleep(backoff)
+                    continue
+                return []
+
+            except httpx.ConnectError as e:
+                logger.warning(
+                    f"OBIS Connection Error for {scientific_name}: Network unreachable. Attempt {attempt + 1}/{self.max_retries}. {str(e)}")
+                if attempt < self.max_retries - 1:
+                    backoff = self.initial_backoff * (2 ** attempt)
+                    await asyncio.sleep(backoff)
+                    continue
+                return []
+
+            except httpx.NetworkError as e:
+                logger.warning(
+                    f"OBIS Network Error for {scientific_name}. Attempt {attempt + 1}/{self.max_retries}. {str(e)}")
+                if attempt < self.max_retries - 1:
+                    backoff = self.initial_backoff * (2 ** attempt)
+                    await asyncio.sleep(backoff)
+                    continue
+                return []
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code >= 500:
+                    logger.warning(
+                        f"OBIS Server Error ({e.response.status_code}) for {scientific_name}. Attempt {attempt + 1}/{self.max_retries}")
+                    if attempt < self.max_retries - 1:
+                        backoff = self.initial_backoff * (2 ** attempt)
+                        await asyncio.sleep(backoff)
+                        continue
+                else:
+                    logger.error(f"OBIS HTTP Error ({e.response.status_code}) for {scientific_name}: {str(e)}")
+                return []
+
+            except json.JSONDecodeError as e:
+                logger.error(f"OBIS JSON Parsing Error for {scientific_name}: Response body is malformed. {str(e)}")
+                return []
+
+            except asyncio.TimeoutError:
+                logger.warning(f"OBIS Async Timeout for {scientific_name}. Attempt {attempt + 1}/{self.max_retries}")
+                if attempt < self.max_retries - 1:
+                    backoff = self.initial_backoff * (2 ** attempt)
+                    await asyncio.sleep(backoff)
+                    continue
+                return []
+
+            except Exception as e:
+                logger.error(f"OBIS Unexpected Error for {scientific_name}: {type(e).__name__}: {str(e)}")
+                return []
+
+        logger.error(f"OBIS All Retries Exhausted for {scientific_name}")
+        return []
 
     def calculate_zones(self, species_id: str, occurrences: List[Dict]) -> Dict[int, Dict]:
+        if not occurrences or not isinstance(occurrences, list):
+            logger.warning(f"Invalid occurrences input for {species_id}: Expected list, got {type(occurrences)}")
+            return {}
         # Groups sightings by month and calculates the average center point
         monthly_groups = {m: [] for m in range(1, 13)}
         radius = self.SPECIES_CONFIG.get(species_id, {}).get("radius", 200)
 
-        for occ in occurrences:
+        for idx, occ in enumerate(occurrences):
             try:
-                date = datetime.fromisoformat(occ["eventDate"].split('T')[0])
+                if not isinstance(occ, dict):
+                    continue
+
+                lat = occ.get("decimalLatitude")
+                lng = occ.get("decimalLongitude")
+                date_str = occ.get("eventDate")
+
+                if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+                    continue
+
+                if not date_str:
+                    continue
+
+                date = datetime.fromisoformat(date_str.split('T')[0])
                 month = date.month
-                monthly_groups[month].append((occ["decimalLatitude"], occ["decimalLongitude"]))
+                monthly_groups[month].append((lat, lng))
+
             except (ValueError, KeyError, TypeError, AttributeError):
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error processing occurrence {idx} for {species_id}: {str(e)}")
                 continue
 
         calculated_zones = {}
@@ -102,37 +218,65 @@ class OBISService:
                 continue
 
             # Calculate center point
-            avg_lat = sum(c[0] for c in coords) / len(coords)
-            avg_lng = sum(c[1] for c in coords) / len(coords)
+            try:
+                avg_lat = sum(c[0] for c in coords) / len(coords)
+                avg_lng = sum(c[1] for c in coords) / len(coords)
 
-            calculated_zones[month] = {
-                "center": {"lat": avg_lat, "lng": avg_lng},
-                "radius_km": radius,
-                "sighting_count": len(coords)
-            }
+                calculated_zones[month] = {
+                    "center": {"lat": avg_lat, "lng": avg_lng},
+                    "radius_km": radius,
+                    "sighting_count": len(coords)
+                }
+            except Exception as e:
+                logger.error(f"Error calculating zone for {species_id} month {month}: {str(e)}")
+                continue
 
         return calculated_zones
 
     async def refresh_zones(self, species_id: str):
         # Fetches data, calculates zones, and updates the cache
-        config = self.SPECIES_CONFIG.get(species_id)
-        if not config:
-            logger.warning(f"No config found for species: {species_id}")
-            return
+        try:
+            config = self.SPECIES_CONFIG.get(species_id)
+            if not config:
+                logger.error(f"Invalid species ID: {species_id} not found in SPECIES_CONFIG")
+                return
 
-        occurrences = await self.fetch_occurrences(
-            scientific_name=config["name"],
-            geometry=config["region"]
-        )
+            occurrences = await self.fetch_occurrences(
+                scientific_name=config["name"],
+                geometry=config["region"]
+            )
 
-        if occurrences:
-            zones = self.calculate_zones(species_id, occurrences)
-            self._zone_cache[species_id] = zones
-            logger.info(f"Loaded zones for {species_id}: {len(zones)} months cached")
-        else:
-            logger.error(f"Failed to refresh zones for {species_id}: No data returned")
+            if not occurrences:
+                return
+
+            try:
+                zones = self.calculate_zones(species_id, occurrences)
+                if not zones:
+                    return
+
+                self._zone_cache[species_id] = zones
+
+            except Exception as e:
+                logger.critical(f"Zone Calculation Crash Prevented for {species_id}: {type(e).__name__}: {str(e)}")
+                return
+
+        except asyncio.CancelledError:
+            logger.warning(f"Zone refresh for {species_id} was cancelled")
+        except Exception as e:
+            logger.critical(
+                f"Complete Crash Prevention During Zone Refresh for {species_id}: {type(e).__name__}: {str(e)}")
+
+    async def initialize_cache(self):
+        logger.info("Starting OBIS cache warmup...")
+        tasks = [self.refresh_zones(species_id) for species_id in self.SPECIES_CONFIG.keys()]
+        await asyncio.gather(*tasks)
+        self._is_ready = True
+        logger.info("OBIS cache warmup complete. Service is ready.")
 
     def get_zones(self, species_id: str) -> Optional[Dict[int, Dict]]:
+        if not self._is_ready:
+            logger.warning("get_zones called before cache was fully warmed up!")
+
         return self._zone_cache.get(species_id)
 
 
