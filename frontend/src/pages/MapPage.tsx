@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Map, MapStyle, config } from "@maptiler/sdk";
+import { Map, config } from "@maptiler/sdk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
 
 config.apiKey = ***ENTFERNT***;
-
-// --------- Mock Data Start ---------
 
 interface Ship {
   id: string;
@@ -24,6 +22,7 @@ interface RegionData {
   ships: Ship[];
 }
 
+// Mock Data
 const REGIONS_DATA: RegionData[] = [
   {
     id: "thunnus-thynnus",
@@ -63,8 +62,6 @@ const REGIONS_DATA: RegionData[] = [
     ],
   },
 ];
-
-// --------- Mock Data End ---------
 
 /**
  * Calculates the distance between two coordinates in kilometers using the Haversine formula.
@@ -139,7 +136,7 @@ export default function MapPage() {
 
     const map = new Map({
       container: mapContainer.current,
-      style: MapStyle.OCEAN,
+      style: "019e79d9-fb71-728c-83cd-3a386798757e",
       center: REGIONS_DATA[0].center,
       zoom: REGIONS_DATA[0].zoom,
       pitch: 0,
@@ -167,7 +164,17 @@ export default function MapPage() {
         type: "circle",
         source: "fish-migration-zone",
         paint: {
-          "circle-radius": 180,
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            5, // At zoom 0, radius is 5px
+            4,
+            150, // At zoom 4, radius is 150px
+            10,
+            800, // At zoom 10, radius is 800px
+          ],
           "circle-blur": 0.8,
           "circle-opacity": 0.6,
           "circle-color": [
