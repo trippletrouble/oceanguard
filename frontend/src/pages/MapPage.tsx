@@ -1,8 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import { fetchMigrationZone, fetchSpeciesVessels } from "../services/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  fetchAllSpecies,
+  fetchMigrationZone,
+  fetchSpeciesVessels,
+} from "../services/api";
 import { Map, Popup, config } from "@maptiler/sdk";
 import turfCircle from "@turf/circle";
-import { ChevronLeft, ChevronRight, Menu, X, ArrowLeft } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
 
 // just to avoid the warning
@@ -17,58 +29,113 @@ interface Vessel {
   level: "CRITICAL" | "WARNING" | "LOW";
 }
 
-interface RegionConfig {
+interface RegionData {
   id: string;
-  displayName: string;
-  speciesName: string;
+  regionName: string;
+  commonSpeciesName: string;
+  scientificSpeciesName: string;
+  active: boolean;
   zoom: number;
   fallbackCenter: [number, number];
 }
 
-const REGIONS_DATA: RegionConfig[] = [
-  {
-    id: "thunnus-thynnus",
-    displayName: "Mediterranean Sea",
-    speciesName: "Bluefin Tuna (Thunnus thynnus)",
-    zoom: 5.0,
-    fallbackCenter: [15.0, 38.0],
-  },
-  {
-    id: "gadus-morhua",
-    displayName: "North Sea",
-    speciesName: "Atlantic Cod (Gadus morhua)",
-    zoom: 4.5,
-    fallbackCenter: [3.0, 56.5],
-  },
-  {
-    id: "sardina-pilchardus",
-    displayName: "European Atlantic Coast",
-    speciesName: "Sardine (Sardina pilchardus)",
-    zoom: 5.0,
-    fallbackCenter: [-9.5, 40.0],
-  },
-  {
-    id: "xiphias-gladius",
-    displayName: "Mediterranean Sea",
-    speciesName: "Swordfish (Xiphias gladius)",
-    zoom: 5.2,
-    fallbackCenter: [19.0, 57.0],
-  },
+const SEAS = [
+  { name: "Global Overview", center: [5.0, 48.0], zoom: 3.2 },
+  { name: "Mediterranean Sea", center: [15.0, 38.0], zoom: 4.5 },
+  { name: "North Sea", center: [3.0, 56.5], zoom: 4.5 },
+  { name: "European Atlantic Coast", center: [-9.5, 40.0], zoom: 5.0 },
 ];
 
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const mapRef = useRef<Map | null>(null);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isMapReady, setIsMapReady] = useState<boolean>(false);
 
-  const activeRegion = REGIONS_DATA[currentIndex];
+  const [seaIndex, setSeaIndex] = useState<number>(0);
+  const [selectedFish, setSelectedFish] = useState<string | null>(null);
+
   const currentMonth = new Date().getMonth() + 1;
 
-  useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
+  const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery({
+    queryKey: ["all-species"],
+    queryFn: fetchAllSpecies,
+    staleTime: 60 * 60 * 1000,
+  });
 
+  const REGIONS_DATA: RegionData[] = useMemo(() => {
+    if (!rawSpecies) return [];
+    return rawSpecies
+      .filter((sp: any) => sp.active)
+      .map((sp: any) => {
+        const lowerRegion = (sp.region || "").toLowerCase();
+        let matchingSea = SEAS[0];
+
+        // fun fuzzy matching
+        if (lowerRegion.includes("north sea")) {
+          matchingSea = SEAS.find((s) => s.name === "North Sea") || SEAS[0];
+        } else if (
+          lowerRegion.includes("atlantic coast") ||
+          sp.id === "sardina-pilchardus"
+        ) {
+          matchingSea =
+            SEAS.find((s) => s.name === "European Atlantic Coast") || SEAS[0];
+        } else if (lowerRegion.includes("mediterranean")) {
+          matchingSea =
+            SEAS.find((s) => s.name === "Mediterranean Sea") || SEAS[0];
+        } else if (lowerRegion.includes("atlantic")) {
+          matchingSea =
+            SEAS.find((s) => s.name === "European Atlantic Coast") || SEAS[0];
+        }
+
+        return {
+          id: sp.id,
+          regionName: matchingSea.name,
+          commonSpeciesName: sp.common_name,
+          scientificSpeciesName: sp.scientific_name,
+          active: sp.active,
+          zoom: matchingSea.zoom,
+          fallbackCenter: matchingSea.center as [number, number],
+        };
+      });
+  }, [rawSpecies]);
+
+  const { data: zonesData } = useQuery({
+    queryKey: ["migration-zones", currentMonth],
+    queryFn: async () => {
+      return await Promise.all(
+        REGIONS_DATA.map(async (region) => {
+          const zoneData = await fetchMigrationZone(
+            region.id,
+            currentMonth,
+          ).catch(() => null);
+          return { region, zoneData };
+        }),
+      );
+    },
+    staleTime: 15 * 60 * 1000,
+    enabled: REGIONS_DATA.length > 0,
+  });
+
+  const { data: vesselsData } = useQuery({
+    queryKey: ["live-vessels"],
+    queryFn: async () => {
+      return await Promise.all(
+        REGIONS_DATA.map(async (region) => {
+          const vesselData = await fetchSpeciesVessels(region.id).catch(() => ({
+            vessels: [],
+          }));
+          return { region, vessels: vesselData?.vessels || [] };
+        }),
+      );
+    },
+    refetchInterval: 10000,
+    enabled: REGIONS_DATA.length > 0,
+  });
+
+  useEffect(() => {
+    if (!mapContainer.current || mapRef.current || REGIONS_DATA.length === 0)
+      return;
     let isCancelled = false;
 
     const initializeMap = async () => {
@@ -84,8 +151,8 @@ export default function MapPage() {
         const map = new Map({
           container: mapContainer.current!,
           style: styleJson,
-          center: activeRegion.fallbackCenter,
-          zoom: activeRegion.zoom,
+          center: SEAS[0].center as [number, number],
+          zoom: SEAS[0].zoom,
           pitch: 0,
           terrain: false,
           maxPitch: 0,
@@ -123,6 +190,7 @@ export default function MapPage() {
             id: "migration-zone-label",
             type: "symbol",
             source: "fish-migration-zone",
+            minzoom: 5,
             layout: {
               "text-field": ["get", "zoneLabel"],
               "text-font": ["Merriweather Bold Italic"],
@@ -232,129 +300,186 @@ export default function MapPage() {
         setIsMapReady(false);
       }
     };
-  }, []);
+  }, [REGIONS_DATA]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!isMapReady || !map) return;
+    if (!isMapReady || !map || !zonesData) return;
 
-    const synchronizeLiveTracker = async () => {
-      try {
-        let centerLng = activeRegion.fallbackCenter[0];
-        let centerLat = activeRegion.fallbackCenter[1];
-        let radiusKm = 100;
+    if (selectedFish) {
+      const regionConf = REGIONS_DATA.find((r) => r.id === selectedFish);
+      const zonePayload = zonesData.find(
+        (z) => z.region.id === selectedFish,
+      )?.zoneData;
+      const targetLng =
+        zonePayload?.center?.lng ??
+        zonePayload?.center?.[0] ??
+        regionConf?.fallbackCenter[0];
+      const targetLat =
+        zonePayload?.center?.lat ??
+        zonePayload?.center?.[1] ??
+        regionConf?.fallbackCenter[1];
 
-        try {
-          const zoneData = await fetchMigrationZone(
-            activeRegion.id,
-            currentMonth,
-          );
-          if (zoneData) {
-            if (zoneData.center) {
-              centerLng = zoneData.center.lng ?? zoneData.center[0];
-              centerLat = zoneData.center.lat ?? zoneData.center[1];
-            }
-            if (zoneData.radius_km) {
-              radiusKm = zoneData.radius_km;
-            }
-          }
-        } catch (e) {
-          console.warn(
-            `Could not fetch live migration zone for ${activeRegion.id}`,
-          );
-        }
+      map.flyTo({
+        center: [targetLng, targetLat],
+        zoom: 5.5,
+        essential: true,
+        speed: 0.8,
+      });
+    } else {
+      const targetSea = SEAS[seaIndex];
+      map.flyTo({
+        center: targetSea.center as [number, number],
+        zoom: targetSea.zoom,
+        essential: true,
+        speed: 0.8,
+      });
+    }
+  }, [seaIndex, selectedFish, isMapReady, zonesData, REGIONS_DATA]);
 
-        let vesselsList: Vessel[] = [];
-        try {
-          const vesselData = await fetchSpeciesVessels(activeRegion.id);
-          vesselsList = vesselData.vessels || [];
-        } catch (e) {
-          console.warn(
-            `Could not pull live tracking vessels for ${activeRegion.id}.`,
-          );
-        }
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!isMapReady || !map || !zonesData || !vesselsData) return;
 
-        const sanitizedVessels = vesselsList.map((v) => ({
-          ...v,
-          score:
-            v.score === null || typeof v.score === "undefined" ? 0.0 : v.score,
-        }));
+    const allZoneFeatures: any[] = [];
+    const allShipFeatures: any[] = [];
 
-        const maxThreatScore = Math.max(
-          ...sanitizedVessels.map((v) => v.score),
-          0,
-        );
-        const computedHasThreat = maxThreatScore >= 0.7;
+    let regionsToProcess = REGIONS_DATA;
 
-        const accuratePolygon = turfCircle([centerLng, centerLat], radiusKm, {
-          steps: 64,
-          units: "kilometers",
+    if (selectedFish) {
+      regionsToProcess = REGIONS_DATA.filter((r) => r.id === selectedFish);
+    } else if (seaIndex !== 0) {
+      regionsToProcess = REGIONS_DATA.filter(
+        (r) => r.regionName === SEAS[seaIndex].name,
+      );
+    }
+
+    regionsToProcess.forEach((region) => {
+      const zonePayload = zonesData.find(
+        (z) => z.region.id === region.id,
+      )?.zoneData;
+      const centerLng =
+        zonePayload?.center?.lng ??
+        zonePayload?.center?.[0] ??
+        region.fallbackCenter[0];
+      const centerLat =
+        zonePayload?.center?.lat ??
+        zonePayload?.center?.[1] ??
+        region.fallbackCenter[1];
+      const radiusKm = zonePayload?.radius_km || 100;
+
+      const vesselPayload =
+        vesselsData.find((v) => v.region.id === region.id)?.vessels || [];
+      const sanitizedVessels = vesselPayload.map((v: Vessel) => ({
+        ...v,
+        score: v.score ?? 0.0,
+      }));
+      const maxThreatScore = Math.max(
+        ...sanitizedVessels.map((v: Vessel) => v.score || 0),
+        0,
+      );
+      const computedHasThreat = maxThreatScore >= 0.7;
+
+      const accuratePolygon = turfCircle([centerLng, centerLat], radiusKm, {
+        steps: 64,
+        units: "kilometers",
+      });
+
+      allZoneFeatures.push({
+        type: "Feature",
+        geometry: accuratePolygon.geometry,
+        properties: { isThreatened: computedHasThreat },
+      });
+
+      allZoneFeatures.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [centerLng, centerLat] },
+        properties: {
+          isThreatened: computedHasThreat,
+          zoneLabel: `${region.commonSpeciesName}\n(${region.scientificSpeciesName})\n~${radiusKm}km`,
+        },
+      });
+
+      sanitizedVessels.forEach((ship: Vessel) => {
+        allShipFeatures.push({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [ship.lng, ship.lat] },
+          properties: {
+            mmsi: ship.mmsi,
+            vesselName: ship.name,
+            overlapScore: ship.score,
+            isHighThreat: (ship.score || 0) >= 0.7,
+          },
         });
+      });
+    });
 
-        const finalZoneGeoJSON = {
-          type: "FeatureCollection",
-          features: [
-            {
-              type: "Feature",
-              geometry: accuratePolygon.geometry,
-              properties: {
-                isThreatened: computedHasThreat,
-              },
-            },
-            {
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [centerLng, centerLat],
-              },
-              properties: {
-                isThreatened: computedHasThreat,
-                zoneLabel: `${activeRegion.speciesName}\nMigration Zone (~${radiusKm}km)`,
-              },
-            },
-          ],
-        };
+    const zoneSource = map.getSource("fish-migration-zone");
+    const shipsSource = map.getSource("live-ships");
 
-        const finalShipsGeoJSON = {
-          type: "FeatureCollection",
-          features: sanitizedVessels.map((ship) => ({
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [ship.lng, ship.lat] },
-            properties: {
-              mmsi: ship.mmsi,
-              vesselName: ship.name,
-              overlapScore: ship.score,
-              isHighThreat: ship.score >= 0.7,
-            },
-          })),
-        };
+    if (zoneSource)
+      (zoneSource as any).setData({
+        type: "FeatureCollection",
+        features: allZoneFeatures,
+      });
+    if (shipsSource)
+      (shipsSource as any).setData({
+        type: "FeatureCollection",
+        features: allShipFeatures,
+      });
+  }, [zonesData, vesselsData, isMapReady, seaIndex, selectedFish]);
 
-        const zoneSource = map.getSource("fish-migration-zone");
-        const shipsSource = map.getSource("live-ships");
+  const handleNext = () => {
+    setSelectedFish(null);
+    setSeaIndex((prev) => (prev + 1) % SEAS.length);
+  };
 
-        if (zoneSource) (zoneSource as any).setData(finalZoneGeoJSON);
-        if (shipsSource) (shipsSource as any).setData(finalShipsGeoJSON);
+  const handlePrev = () => {
+    setSelectedFish(null);
+    setSeaIndex((prev) => (prev - 1 + SEAS.length) % SEAS.length);
+  };
 
-        map.flyTo({
-          center: [centerLng, centerLat],
-          zoom: activeRegion.zoom,
-          essential: true,
-          speed: 0.8,
-        });
-      } catch (error) {
-        console.error("Critical error processing map pipeline sync: ", error);
-      }
-    };
-
-    synchronizeLiveTracker();
-  }, [currentIndex, isMapReady, currentMonth]);
-
-  const handleNext = () =>
-    setCurrentIndex((prev) => (prev + 1) % REGIONS_DATA.length);
-  const handlePrev = () =>
-    setCurrentIndex(
-      (prev) => (prev - 1 + REGIONS_DATA.length) % REGIONS_CONFIG.length,
+  if (isSpeciesLoading || REGIONS_DATA.length === 0) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-ocean text-white font-cal">
+        <Loader2 className="w-12 h-12 animate-spin mb-4 text-white" />
+        <h2 className="text-xl tracking-wider">Loading Marine Data...</h2>
+      </div>
     );
+  }
+
+  const activeTitle = selectedFish
+    ? REGIONS_DATA.find((r) => r.id === selectedFish)?.commonSpeciesName
+    : SEAS[seaIndex].name;
+
+  let activeSubtitle = "";
+  if (selectedFish) {
+    const selected = REGIONS_DATA.find((r) => r.id === selectedFish);
+    activeSubtitle = selected
+      ? `${selected.commonSpeciesName} (${selected.scientificSpeciesName})`
+      : "";
+  } else if (seaIndex === 0) {
+    activeSubtitle = "All Active Migration Zones";
+  } else {
+    const currentSeaName = SEAS[seaIndex].name;
+    const fishesInSea = REGIONS_DATA.filter(
+      (r) => r.regionName === currentSeaName,
+    );
+
+    if (fishesInSea.length === 0) {
+      activeSubtitle = "No active zones";
+    } else if (fishesInSea.length === 1) {
+      activeSubtitle = fishesInSea[0].commonSpeciesName;
+    } else if (fishesInSea.length === 2) {
+      activeSubtitle = `${fishesInSea[0].commonSpeciesName} & ${fishesInSea[1].commonSpeciesName}`;
+    } else {
+      activeSubtitle = `${fishesInSea[0].commonSpeciesName}, ${fishesInSea[1].commonSpeciesName} +${fishesInSea.length - 2} more`;
+    }
+  }
+
+  const getFullSpeciesName = (region: RegionData) => {
+    return `${region.commonSpeciesName} (${region.scientificSpeciesName})`;
+  };
 
   return (
     <div className="fixed w-screen h-screen overflow-hidden z-0">
@@ -364,58 +489,82 @@ export default function MapPage() {
         <div className="pointer-events-auto absolute! bottom-8 md:bottom-auto top-auto md:top-6 left-1/2 -translate-x-1/2 px-4 md:px-6 py-3 rounded-full flex items-center gap-3 md:gap-5 glass-nav max-w-130 w-[90%] md:w-full justify-between font-cal shadow-md bg-white/80 backdrop-blur-md">
           <button
             onClick={handlePrev}
-            className="group text-slate-900 text-lg px-2.5 py-1 select-none transition-transform active:scale-95 cursor-pointer"
+            className="group text-slate-200 hover:bg-slate-300 rounded-full text-lg p-3 select-none transition-transform active:scale-95 cursor-pointer"
           >
-            <ChevronLeft className="w-5 h-5" strokeWidth={5} />
+            <ChevronLeft
+              className="w-5 h-5 group-hover:text-slate-600"
+              strokeWidth={5}
+            />
           </button>
           <div className="text-center flex-1">
-            <div className="tracking-widest text-xl font-semibold text-slate-900">
-              {activeRegion.displayName}
+            <div className="tracking-widest text-xl font-semibold text-white">
+              {activeTitle}
             </div>
-            <div className="text-xs text-slate-700 mt-0.5">
-              {activeRegion.speciesName}
+            <div className="text-xs text-slate-200 mt-0.5">
+              {activeSubtitle}
             </div>
           </div>
           <button
             onClick={handleNext}
-            className="group text-slate-900 text-lg px-2.5 py-1 select-none transition-transform active:scale-95 cursor-pointer"
+            className="group text-slate-200 hover:bg-slate-300 rounded-full text-lg p-3 select-none transition-transform active:scale-95 cursor-pointer"
           >
-            <ChevronRight className="w-5 h-5" strokeWidth={5} />
+            <ChevronRight
+              className="w-5 h-5 group-hover:text-slate-600"
+              strokeWidth={5}
+            />
           </button>
         </div>
 
         <div
-          className={`pointer-events-auto fixed top-5 bottom-5 left-5 w-75 bg-[#f4f4f5] rounded-4xl py-4 z-50 transform transition-transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-[calc(100%+20px)]"} shadow-2xl p-6`}
+          className={`pointer-events-auto text-white fixed top-25 left-10 w-75 glass-nav rounded-4xl p-2 z-50 transform transition-transform tracking-wide ${isSidebarOpen ? "translate-x-0" : "-translate-x-[calc(100%+50px)]"} shadow-2xl p-6`}
         >
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-bold text-lg">Filters</h2>
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="p-1.5 hover:bg-slate-200 rounded-full transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-slate-600 rounded-full transition-colors cursor-pointer"
             >
-              <X size={20} className="text-slate-600" />
+              <X size={20} strokeWidth={3} className="text-slate-200" />
             </button>
           </div>
           <div className="flex flex-col gap-4">
             <select
-              className="w-full p-2 border border-gray-300 rounded-xl text-base"
-              onChange={() => {}}
+              value={seaIndex}
+              onChange={(e) => {
+                setSelectedFish(null);
+                setSeaIndex(Number(e.target.value));
+              }}
+              className="w-full p-2 border-2 border-slate-200 rounded-xl text-base outline-none cursor-pointer"
             >
-              <option value="all">All Regions</option>
-              {REGIONS_DATA.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.displayName}
+              {SEAS.map((sea, index) => (
+                <option key={index} value={index}>
+                  {sea.name}
                 </option>
               ))}
             </select>
+
             <select
-              className="w-full p-2 border border-gray-300 rounded-xl text-base"
-              onChange={() => {}}
+              value={selectedFish || "all"}
+              onChange={(e) => {
+                if (e.target.value === "all") {
+                  setSelectedFish(null);
+                } else {
+                  setSelectedFish(e.target.value);
+                  const fishRegion = REGIONS_DATA.find(
+                    (r) => r.id === e.target.value,
+                  );
+                  const newSeaIndex = SEAS.findIndex(
+                    (s) => s.name === fishRegion?.regionName,
+                  );
+                  if (newSeaIndex !== -1) setSeaIndex(newSeaIndex);
+                }
+              }}
+              className="w-full p-2 border-2 border-slate-200 rounded-xl text-base outline-none cursor-pointer"
             >
               <option value="all">All Fishes</option>
               {REGIONS_DATA.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.displayName}
+                  {getFullSpeciesName(r)}
                 </option>
               ))}
             </select>
@@ -423,20 +572,24 @@ export default function MapPage() {
         </div>
 
         <div className="absolute w-fit top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full font-cal">
-          <div className="pointer-events-auto glass-nav p-2 rounded-full bg-white/80 backdrop-blur-md shadow-md">
+          <div className="pointer-events-auto glass-nav p-2 rounded-full backdrop-blur-md shadow-md">
             <button
               onClick={() => (window.location.href = "/")}
-              className="flex items-center gap-2 p-2 text-slate-900 text-sm font-medium hover:bg-black/5 rounded-full transition-colors cursor-pointer"
+              className="group flex items-center gap-2 p-2 text-white text-sm font-medium hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
             >
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft
+                size={16}
+                className=" text-white group-hover:text-slate-600"
+              />{" "}
+              Back
             </button>
           </div>
-          <div className="pointer-events-auto glass-nav p-2 rounded-full bg-white/80 backdrop-blur-md shadow-md">
+          <div className="pointer-events-auto glass-nav p-2 rounded-full backdrop-blur-md shadow-md">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer"
+              className="group p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
             >
-              <Menu className="w-5 h-5 text-slate-900" />
+              <Menu className="w-5 h-5 text-white group-hover:text-slate-600" />
             </button>
           </div>
         </div>

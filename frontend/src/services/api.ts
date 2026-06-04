@@ -3,6 +3,11 @@ import axios from "axios";
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
+export const fetchAllSpecies = async () => {
+  const response = await axios.get(`${API_BASE_URL}/species/`);
+  return response.data;
+};
+
 export const fetchMigrationZone = async (speciesId: string, month: number) => {
   const response = await axios.get(
     `${API_BASE_URL}/species/${speciesId}/migration`,
