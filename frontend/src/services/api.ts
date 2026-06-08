@@ -26,3 +26,16 @@ export const fetchSpeciesVessels = async (speciesId: string) => {
   console.log(response.data);
   return response.data;
 };
+
+export const syncUser = async (token: string, name: string) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/auth/sync`,
+    { name },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return response.data;
+};
