@@ -24,9 +24,9 @@ async def get_species_vessels(species_id: str):
             status_code=404,
             detail=f"Unknown species: {species_id}"
         )
-    
-    vessels = ais_service.get_vessels_for_species(species_id)
-    
+
+    vessels = await ais_service.get_vessels_for_species(species_id)
+
     return {
         "count": len(vessels),
         "vessels": vessels
