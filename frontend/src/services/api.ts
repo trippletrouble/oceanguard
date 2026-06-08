@@ -19,11 +19,10 @@ export const fetchMigrationZone = async (speciesId: string, month: number) => {
   return response.data;
 };
 
-export const fetchSpeciesVessels = async (speciesId: string) => {
+export const fetchVesselOverlaps = async (speciesId: string, month: number) => {
   const response = await axios.get(
-    `${API_BASE_URL}/vessels/species/${speciesId}`,
+    `${API_BASE_URL}/overlap?species_id=${speciesId}&month=${month}`,
   );
-  console.log(response.data);
   return response.data;
 };
 
@@ -35,7 +34,7 @@ export const syncUser = async (token: string, name: string) => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    }
+    },
   );
   return response.data;
 };
