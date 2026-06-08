@@ -36,7 +36,7 @@ async def get_migration_zone(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt die saisonale Migrationszone einer Art für einen bestimmten Monat zurück.
+    Gibt die saisonale Migrationszone(n) einer Art für einen bestimmten Monat zurück.
     Öffentlich zugänglich (Guest access).
     """
     result = await db.execute(select(Species).where(Species.id == species_id))
@@ -48,15 +48,15 @@ async def get_migration_zone(
             detail=f"Species with ID '{species_id}' not found"
         )
 
-    zones = obis_service.get_zones(species_id)
-    if zones is None:
+    zones_dict = obis_service.get_zones(species_id)
+    if zones_dict is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Zone data for '{species_id}' is not yet available. Please try again later."
         )
 
-    zone = zones.get(month)
-    if not zone:
+    month_zones = zones_dict.get(month)
+    if not month_zones:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No sighting data available for '{species_id}' in month {month}"
@@ -65,9 +65,14 @@ async def get_migration_zone(
     return {
         "species_id": species_id,
         "month": month,
-        "center": zone["center"],
-        "radius_km": zone["radius_km"],
-        "sighting_count": zone["sighting_count"]
+        "zones": [
+            {
+                "center": zone.get("center"),
+                "radius_km": zone.get("radius_km"),
+                "sighting_count": zone.get("sighting_count", 0)
+            }
+            for zone in month_zones
+        ]
     }
 
 

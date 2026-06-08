@@ -28,6 +28,8 @@ class AISService:
             try:
                 print("Connecting to AIS Stream.")
 
+                bboxes = await self.get_all_bboxes()
+
                 async with websockets.connect(
                     URL,
                     ping_interval=20,
@@ -36,7 +38,7 @@ class AISService:
                     self.ais_connected = True
                     
                     subscribe_message = {"APIKey": self.api_key,
-                                        "BoundingBoxes": self.get_all_bboxes(),
+                                        "BoundingBoxes": bboxes,
                                         "FilterMessageTypes": ["PositionReport"]}
                     subscribe_message_json = json.dumps(subscribe_message)
                     await websocket.send(subscribe_message_json)
@@ -78,7 +80,7 @@ class AISService:
 
         #self.log_vessel(mmsi)
 
-    def get_all_bboxes(self) -> list[list]:
+    async def get_all_bboxes(self) -> list[list]:
         bboxes = []
         month = datetime.now().month
 
@@ -87,22 +89,20 @@ class AISService:
             if not zones:
                 continue
 
-            zone = zones.get(month)
-            if not zone:
-                continue
+            month_zones = zones.get(month, [])
+            for zone in month_zones:
+                center = zone.get("center")
+                if not center:
+                    continue
 
-            center = zone.get("center")
-            if not center:
-                continue
-
-            radius_km = zone.get("radius_km", 200)
-            buffer = radius_km / 111
-            lat = center["lat"]
-            lng = center["lng"]
-            bboxes.append([
-                [lat - buffer, lng - buffer],
-                [lat + buffer, lng + buffer]
-            ])
+                radius_km = zone.get("radius_km", 200)
+                buffer = radius_km / 111
+                lat = center["lat"]
+                lng = center["lng"]
+                bboxes.append([
+                    [lat - buffer, lng - buffer],
+                    [lat + buffer, lng + buffer]
+                ])
 
         return bboxes if bboxes else [[[30, -10], [50, 40]]]
 
@@ -138,8 +138,8 @@ class AISService:
             min_lat <= lat <= max_lat and
             min_lng <= lng <= max_lng
         )
-    
-    def get_vessels_for_species(self, species_id: str):
+
+    async def get_vessels_for_species(self, species_id: str):
         month = datetime.now().month
 
         zones = obis_service.get_zones(species_id)
@@ -147,35 +147,43 @@ class AISService:
             print(f"[DEBUG] Unknown species or no OBIS zones: {species_id}")
             return []
 
-        zone = zones.get(month)
-        if not zone:
-            print(f"[DEBUG] No zone for current month ({month}) for species: {species_id}")
+        month_zones = zones.get(month, [])
+        if not month_zones:
+            print(f"[DEBUG] No zones for current month ({month}) for species: {species_id}")
             return []
 
-        center = zone.get("center")
-        if not center:
-            return []
-        
-        radius_km = zone.get("radius_km", 200)
-        buffer = radius_km / 111
-        bbox = [
-            [center["lat"] - buffer, center["lng"] - buffer],
-            [center["lat"] + buffer, center["lng"] + buffer]
-        ]
-        
         print(f"[DEBUG] Filtering species: {species_id}")
-        print(f"[DEBUG] Using bbox(OBIS): {bbox}")
-        
-        vessels = []
+        print(f"[DEBUG] Found {len(month_zones)} cluster center(s) for month {month}")
 
-        for vessel in self.vessel_cache.values():
-            if self.vessel_in_bbox(vessel, bbox):
-                vessels.append(vessel)
+        matched_vessels = {}
 
-        print(f"[DEBUG] Total matched: {len(vessels)}")
+        # Loop through each calculated cluster center for this month
+        for idx, zone in enumerate(month_zones, start=1):
+            center = zone.get("center")
+            if not center:
+                continue
 
-        return vessels
+            radius_km = zone.get("radius_km", 200)
+            buffer = radius_km / 111
+            bbox = [
+                [center["lat"] - buffer, center["lng"] - buffer],
+                [center["lat"] + buffer, center["lng"] + buffer]
+            ]
 
+            print(f"  [DEBUG] Center #{idx}: {center}")
+            print(f"  [DEBUG] Using bbox(OBIS): {bbox}")
+
+            cluster_match_count = 0
+            for vessel in self.vessel_cache.values():
+                if self.vessel_in_bbox(vessel, bbox):
+                    matched_vessels[vessel["mmsi"]] = vessel
+                    cluster_match_count += 1
+
+            print(f"  [DEBUG] Cluster #{idx} matched {cluster_match_count} vessels inside its bbox")
+
+        print(f"[DEBUG] Total unique matched vessels across all clusters: {len(matched_vessels)}")
+
+        return list(matched_vessels.values())
 
     #Cache-Cleanup
     def cleanup_old_vessels(self):
