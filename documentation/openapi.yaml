@@ -1,1410 +1,893 @@
-openapi: 3.1.0
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          title: Detail
+          type: array
+      title: HTTPValidationError
+      type: object
+    MarineResponse:
+      properties:
+        lat:
+          title: Lat
+          type: number
+        lng:
+          title: Lng
+          type: number
+        sea_surface_temperature:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Sea Surface Temperature
+      required:
+      - lat
+      - lng
+      title: MarineResponse
+      type: object
+    RoleUpdate:
+      properties:
+        role:
+          enum:
+          - guest
+          - user
+          - admin
+          title: Role
+          type: string
+      required:
+      - role
+      title: RoleUpdate
+      type: object
+    SpeciesCreate:
+      properties:
+        active:
+          default: true
+          title: Active
+          type: boolean
+        common_name:
+          title: Common Name
+          type: string
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        id:
+          title: Id
+          type: string
+        radius_km:
+          default: 200
+          title: Radius Km
+          type: integer
+        region:
+          title: Region
+          type: string
+        scientific_name:
+          title: Scientific Name
+          type: string
+        temp_max:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Max
+        temp_mid:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Mid
+        temp_min:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Min
+        temp_range:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Range
+      required:
+      - common_name
+      - scientific_name
+      - region
+      - id
+      title: SpeciesCreate
+      type: object
+    SpeciesPatch:
+      properties:
+        active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Active
+        common_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Common Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        radius_km:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Radius Km
+        region:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Region
+        scientific_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Scientific Name
+        temp_max:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Max
+        temp_mid:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Mid
+        temp_min:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Min
+        temp_range:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Range
+      title: SpeciesPatch
+      type: object
+    SyncRequest:
+      properties:
+        name:
+          title: Name
+          type: string
+      required:
+      - name
+      title: SyncRequest
+      type: object
+    UserResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        email:
+          title: Email
+          type: string
+        firebase_uid:
+          title: Firebase Uid
+          type: string
+        id:
+          title: Id
+          type: integer
+        name:
+          title: Name
+          type: string
+        role:
+          title: Role
+          type: string
+      required:
+      - id
+      - firebase_uid
+      - email
+      - name
+      - role
+      - created_at
+      title: UserResponse
+      type: object
+    ValidationError:
+      properties:
+        ctx:
+          title: Context
+          type: object
+        input:
+          title: Input
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+      type: object
+    VesselListResponse:
+      properties:
+        count:
+          title: Count
+          type: integer
+        vessels:
+          items:
+            $ref: '#/components/schemas/VesselResponse'
+          title: Vessels
+          type: array
+      required:
+      - vessels
+      - count
+      title: VesselListResponse
+      type: object
+    VesselResponse:
+      properties:
+        cog:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Cog
+        last_update:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Update
+        lat:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lat
+        lng:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lng
+        mmsi:
+          title: Mmsi
+          type: integer
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        sog:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Sog
+      required:
+      - mmsi
+      title: VesselResponse
+      type: object
+  securitySchemes:
+    HTTPBearer:
+      scheme: bearer
+      type: http
 info:
+  description: Backend for monitoring maritime conservation zones
   title: OceanGuard API
   version: 1.0.0
-  description: |
-    OceanGuard ist ein Web Service, der in Echtzeit zeigt, ob Fischereifahrzeuge in Gebieten aktiver Fisch-Verbreitungszonen operieren.
-
-    ### Externe Datenquellen (Aggregator)
-    Unser Backend konsumiert drei externe APIs und bietet dem Frontend über eine saubere REST-Schnittstelle aufbereitete, kombinierte Daten an:
-
-    * **OBIS (Ocean Biodiversity Information System):** Historische Sichtungsdaten (`api.obis.org/v3/occurrence`). Daraus berechnen wir saisonale Verbreitungszonen (Mittelpunkt pro Monat via Haversine).
-    * **AISstream.io:** Echtzeit-Schiffspositionen via WebSocket (`wss://stream.aisstream.io/v0/stream`). Liefert `Latitude`, `Longitude` und `SpeedOverGround`. Wir filtern nach Fischereifahrzeugen (ShipType=30 oder NavigationalStatus=7). Die Subscription-Bbox wird dynamisch aus dem `radius_km` der jeweiligen Art berechnet.
-    * **Open-Meteo Marine API:** Sea Surface Temperature (`marine-api.open-meteo.com/v1/marine`). Wird einmalig beim App-Start pro Art aus 3 Sampling-Punkten (Zonen-Zentrum + Nord + Süd bei 50% Radius) gemittelt und gecacht (TTL 24h). **Nicht pro Schiff abgerufen.**
-
-    ### Kern-Feature: Overlap-Score
-    Der Score beantwortet die Frage: *„Fahren gerade Fischereifahrzeuge genau dort, wo Fische saisonal wandern – und wie kritisch ist das?"*
-
-    **Score = D × (A × 0.6 + T × 0.4)**
-
-    * **D (Distanz-Gatekeeper):** `max(0, 1 - d / radius_km)` — Wie nah ist das Schiff an der Verbreitungszone? `radius_km` ist artspezifisch. D=0 wenn außerhalb → gesamter Score=0. Verhindert False Positives.
-    * **A (Aktivität):** `max(0, 1 - sog / 10)` — Wie wahrscheinlich fischt das Schiff? Basiert auf AIS-Geschwindigkeit (< 10 Knoten).
-    * **T (Temperatur):** `max(0, 1 - |sst - temp_mid| / temp_range)` — Passt die Wassertemperatur zum Optimum der Art? SST kommt aus dem 3-Punkte-Sampling-Cache.
-
-    **Bewertung:** > 0.7 → KRITISCH | 0.4–0.7 → WARNUNG | < 0.4 → GERING
-
-servers:
-  - url: http://localhost:8000
-    description: Lokaler Entwicklungsserver
-
-tags:
-  - name: Auth
-    description: Firebase-basierte Authentifizierung
-  - name: Species
-    description: Fischarten – öffentlich lesbar, Admin-CRUD
-  - name: Vessels
-    description: Echtzeit-Fischereifahrzeuge via AISstream (Frei zugänglich)
-  - name: Overlaps
-    description: Kern-Feature – Overlap-Score Berechnung (Frei zugänglich)
-  - name: Marine
-    description: Meereskonditionen via Open-Meteo (Frei zugänglich)
-  - name: Alerts
-    description: Warnungen bei kritischem Overlap-Score (Frei zugänglich)
-  - name: Favorites
-    description: Gespeicherte Arten und Regionen (User Login benötigt)
-  - name: Reports
-    description: Gespeicherte Overlap-Snapshots (User Login benötigt)
-  - name: Admin
-    description: User-Verwaltung und System-Status (Admin Login benötigt)
-
+openapi: 3.1.0
 paths:
+  /:
+    get:
+      operationId: root__get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Root
+      tags:
+      - Root
+  /admin/system:
+    get:
+      description: 'Zeigt User-Anzahl, aktive Schiffe, gecachte Zonen, AIS-Status
+        und Uptime. **Rolle: Admin.**'
+      operationId: system_status_admin_system_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Systemstatus
+      security:
+      - HTTPBearer: []
+      summary: Systemstatus abrufen
+      tags:
+      - Admin
+  /admin/users:
+    get:
+      description: '**Rolle: Admin.**'
+      operationId: list_users_admin_users_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+                title: Response List Users Admin Users Get
+                type: array
+          description: User-Liste
+      security:
+      - HTTPBearer: []
+      summary: Alle User auflisten
+      tags:
+      - Admin
+  /admin/users/{user_id}:
+    delete:
+      description: 'Admin kann sich nicht selbst löschen. **Rolle: Admin.**'
+      operationId: delete_user_admin_users__user_id__delete
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: integer
+      responses:
+        '204':
+          description: User gelöscht
+        '403':
+          description: Selbstlöschung nicht erlaubt
+        '404':
+          description: User nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: User löschen
+      tags:
+      - Admin
+  /admin/users/{user_id}/role:
+    patch:
+      description: 'Erlaubte Rollen: guest, user, admin. **Rolle: Admin.**'
+      operationId: change_role_admin_users__user_id__role_patch
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+          description: Rolle geändert
+        '400':
+          description: Ungültige Rolle
+        '404':
+          description: User nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: User-Rolle ändern
+      tags:
+      - Admin
+  /alerts:
+    get:
+      description: 'Gibt nur Schiffe mit Score >= 0.4 zurück (WARNUNG + KRITISCH).
+        Parameter: species (Pflicht). **Rolle: Gast.**'
+      operationId: get_active_threat_alerts_alerts_get
+      parameters:
+      - description: The species ID (e.g., 'sardina-pilchardus')
+        in: query
+        name: species_id
+        required: true
+        schema:
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Alert-Liste (kann leer sein)
+        '404':
+          description: Art nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Aktive Warnungen abrufen
+      tags:
+      - Threat Alerts
+      - Threat Alerts
+  /auth/logout:
+    post:
+      description: 'Loggt den User aus. **Rolle: User/Admin.**'
+      operationId: logout_auth_logout_post
+      responses:
+        '204':
+          description: Erfolgreich ausgeloggt
+        '401':
+          description: Nicht eingeloggt
+      security:
+      - HTTPBearer: []
+      summary: Logout
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      description: 'Gibt den eingeloggten User zurück. **Rolle: User/Admin.**'
+      operationId: get_me_auth_me_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+          description: User-Daten
+        '401':
+          description: Nicht eingeloggt
+      security:
+      - HTTPBearer: []
+      summary: Aktuellen User abrufen
+      tags:
+      - Auth
   /auth/sync:
     post:
-      tags:
-        - Auth
-      summary: User nach Firebase-Login synchronisieren
-      description: |
-        **Rolle: User (Mit Login)**
-        Wird nach Firebase-Login aufgerufen. Legt den User in der eigenen Datenbank an (201) oder gibt den bestehenden User zurück (200). Das Backend führt außerdem einen Auto-Sync in `get_current_user()` durch – dieser Endpoint ist optional.
-      security:
-        - BearerAuth: []
+      description: 'Verifiziert Firebase-Token und erstellt/aktualisiert User in lokaler
+        DB. **Rolle: Alle mit gültigem Token.**'
+      operationId: sync_user_auth_sync_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/SyncRequest'
-      responses:
-        '200':
-          description: User existiert bereits – wird zurückgegeben
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-        '201':
-          description: Neuer User wurde angelegt
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /auth/me:
-    get:
-      tags:
-        - Auth
-      summary: Aktuellen eingeloggten User abrufen
-      description: |
-        **Rolle: User (Mit Login)**
-        Gibt die Profildaten des aktuell authentifizierten Users zurück.
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Aktueller User
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /auth/logout:
-    post:
-      tags:
-        - Auth
-      summary: Logout (client-seitig)
-      description: |
-        **Rolle: User (Mit Login)**
-        Das eigentliche Logout passiert im Frontend via Firebase signOut(). Dieser Endpoint dient als REST-konforme Bestätigung.
-      security:
-        - BearerAuth: []
-      responses:
-        '204':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /species:
-    get:
-      tags:
-        - Species
-      summary: Alle aktiven Fischarten abrufen
-      description: |
-        **Rolle: Gast (Ohne Login)**
-        Gibt alle aktiven Arten zurück.
-      responses:
-        '200':
-          description: Liste aller aktiven Arten
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SpeciesResponse'
-    post:
-      tags:
-        - Species
-      summary: Neue Fischart anlegen
-      description: |
-        **Rolle: Admin**
-        Erstellt einen neuen Eintrag für eine Fischart.
-      security:
-        - BearerAuth: []
-      requestBody:
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SpeciesCreate'
       responses:
-        '201':
-          description: Fischart erfolgreich angelegt
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SpeciesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/UserResponse'
+          description: User existiert bereits
+        '201':
+          description: Neuer User erstellt
         '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
+          description: Token ungültig
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-
-  /species/{id}:
-    parameters:
-      - name: id
-        in: path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Firebase-User synchronisieren
+      tags:
+      - Auth
+  /marine-conditions:
+    get:
+      description: 'SST und Wellenhöhe für eine Koordinate. Parameter: lat, lng. **Rolle:
+        Gast.**'
+      operationId: marine_conditions_marine_conditions_get
+      parameters:
+      - in: query
+        name: lat
         required: true
         schema:
-          type: string
-        examples:
-          default:
-            value: thunnus-thynnus
-    get:
-      tags:
-        - Species
-      summary: Einzelne Fischart abrufen
-      description: |
-        **Rolle: Gast (Ohne Login)**
+          title: Lat
+          type: number
+      - in: query
+        name: lng
+        required: true
+        schema:
+          title: Lng
+          type: number
       responses:
         '200':
-          description: Fischart gefunden
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SpeciesResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
+                $ref: '#/components/schemas/MarineResponse'
+          description: Marine-Daten
+        '400':
+          description: Fehlende Koordinaten
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Marine-Bedingungen abrufen
       tags:
-        - Species
-      summary: Fischart komplett aktualisieren
-      description: |
-        **Rolle: Admin**
-      security:
-        - BearerAuth: []
-      requestBody:
+      - Marine
+  /overlap:
+    get:
+      description: 'Berechnet den Overlap-Score für eine Art und einen Monat. Parameter:
+        species (Pflicht), month (Optional, Default=aktueller Monat). **Rolle: Gast.**'
+      operationId: get_overlaps_overlap_get
+      parameters:
+      - description: The species ID (e.g., 'sardina-pilchardus')
+        in: query
+        name: species_id
         required: true
+        schema:
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+          type: string
+      - description: Month context (1-12). Defaults to current month.
+        in: query
+        name: month
+        required: false
+        schema:
+          anyOf:
+          - maximum: 12
+            minimum: 1
+            type: integer
+          - type: 'null'
+          description: Month context (1-12). Defaults to current month.
+          title: Month
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Overlap-Ergebnis mit Scores und Zone
+        '400':
+          description: Ungültiger Monat
+        '404':
+          description: Art oder Zone nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Overlap-Score berechnen
+      tags:
+      - Overlap Analysis
+      - Overlap Analysis
+  /overlap/{mmsi}:
+    get:
+      description: 'Score eines bestimmten Schiffs gegen eine Art. Parameter: species
+        (Pflicht). **Rolle: Gast.**'
+      operationId: get_overlap_for_vessel_overlap__mmsi__get
+      parameters:
+      - in: path
+        name: mmsi
+        required: true
+        schema:
+          title: Mmsi
+          type: integer
+      - description: The species ID (e.g., 'sardina-pilchardus')
+        in: query
+        name: species_id
+        required: true
+        schema:
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Einzelner Vessel-Score
+        '404':
+          description: Schiff oder Art nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Overlap-Score für einzelnes Schiff
+      tags:
+      - Overlap Analysis
+      - Overlap Analysis
+  /species/:
+    get:
+      description: 'Gibt alle aktiven Arten zurück. **Rolle: Gast (kein Login nötig).**'
+      operationId: get_all_species_species__get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Liste aller aktiven Arten
+      summary: Alle aktiven Fischarten abrufen
+      tags:
+      - Species
+    post:
+      description: 'Erstellt eine neue Art. **Rolle: Admin.**'
+      operationId: create_species_species__post
+      requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/SpeciesCreate'
+        required: true
       responses:
-        '200':
-          description: Fischart aktualisiert
+        '201':
+          content:
+            application/json:
+              schema: {}
+          description: Art erstellt
+        '409':
+          description: Art existiert bereits
+        '422':
+          description: Validierungsfehler
+      security:
+      - HTTPBearer: []
+      summary: Neue Fischart anlegen
+      tags:
+      - Species
+  /species/{species_id}:
+    delete:
+      description: 'Setzt active=False. Daten bleiben erhalten. **Rolle: Admin.**'
+      operationId: delete_species_species__species_id__delete
+      parameters:
+      - in: path
+        name: species_id
+        required: true
+        schema:
+          title: Species Id
+          type: string
+      responses:
+        '204':
+          description: Deaktiviert
+        '404':
+          description: Art nicht gefunden
+        '422':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SpeciesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-    patch:
-      tags:
-        - Species
-      summary: Einzelne Felder der Fischart ändern
-      description: |
-        **Rolle: Admin**
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
       security:
-        - BearerAuth: []
-      requestBody:
+      - HTTPBearer: []
+      summary: Fischart deaktivieren (Soft-Delete)
+      tags:
+      - Species
+    get:
+      description: 'Gibt Details einer Art zurück. **Rolle: Gast.**'
+      operationId: get_species_by_id_species__species_id__get
+      parameters:
+      - in: path
+        name: species_id
         required: true
+        schema:
+          title: Species Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Art-Details
+        '404':
+          description: Art nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Einzelne Fischart abrufen
+      tags:
+      - Species
+    patch:
+      description: 'Aktualisiert einzelne Felder. **Rolle: Admin.**'
+      operationId: patch_species_species__species_id__patch
+      parameters:
+      - in: path
+        name: species_id
+        required: true
+        schema:
+          title: Species Id
+          type: string
+      requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/SpeciesPatch'
+        required: true
       responses:
         '200':
-          description: Fischart aktualisiert
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SpeciesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+              schema: {}
+          description: Art aktualisiert
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Art nicht gefunden
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-    delete:
-      tags:
-        - Species
-      summary: Fischart deaktivieren (Soft-Delete)
-      description: |
-        **Rolle: Admin**
-        Setzt active=false – kein hartes Löschen.
+          description: Validierungsfehler
       security:
-        - BearerAuth: []
-      responses:
-        '204':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /species/{id}/migration:
-    get:
+      - HTTPBearer: []
+      summary: Fischart teilweise aktualisieren
       tags:
-        - Species
-      summary: Saisonale Verbreitungszone einer Art abrufen
-      description: |
-        **Rolle: Gast (Ohne Login)**
-        **Externe Datenquelle: OBIS API**
-
-        Gibt die saisonale Verbreitungszone der Art für den angegebenen Monat zurück.
-        Pro Art und Monat wird aus historischen Sichtungen der räumliche Mittelpunkt berechnet.
-        Das Ergebnis ist ein GeoJSON-Kreis (Point + radius_km).
+      - Species
+    put:
+      description: 'Ersetzt alle Felder einer Art. **Rolle: Admin.**'
+      operationId: update_species_species__species_id__put
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: thunnus-thynnus
-        - name: month
-          in: query
-          required: true
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 12
-          examples:
-            default:
-              value: 5
+      - in: path
+        name: species_id
+        required: true
+        schema:
+          title: Species Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeciesCreate'
+        required: true
       responses:
         '200':
-          description: Verbreitungszone als GeoJSON
+          content:
+            application/json:
+              schema: {}
+          description: Art aktualisiert
+        '404':
+          description: Art nicht gefunden
+        '422':
+          description: Validierungsfehler
+      security:
+      - HTTPBearer: []
+      summary: Fischart vollständig aktualisieren
+      tags:
+      - Species
+  /species/{species_id}/migration:
+    get:
+      description: 'Gibt die berechnete Migrationszone für einen Monat zurück. **Rolle:
+        Gast.**'
+      operationId: get_migration_zone_species__species_id__migration_get
+      parameters:
+      - in: path
+        name: species_id
+        required: true
+        schema:
+          title: Species Id
+          type: string
+      - description: Monat (1–12)
+        in: query
+        name: month
+        required: true
+        schema:
+          description: Monat (1–12)
+          maximum: 12
+          minimum: 1
+          title: Month
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: GeoJSON Feature
+        '400':
+          description: Ungültiger Monat
+        '404':
+          description: Art nicht gefunden
+        '422':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MigrationZone'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Migrationszonen abrufen
+      tags:
+      - Species
   /vessels:
     get:
-      tags:
-        - Vessels
-      summary: Fischereifahrzeuge in einer Region abrufen
-      description: |
-        **Rolle: Gast (Ohne Login)**
-        **Externe Datenquelle: AISstream.io** (WebSocket, In-Memory-Cache)
-
-        Gibt alle aktuell bekannten Fischereifahrzeuge aus dem In-Memory-Cache zurück.
-        Die AIS-Subscription läuft im Hintergrund auf Bboxen, die aus den Zonen der aktiven Arten berechnet werden (Zone-Center ± radius_km).
-      parameters:
-        - name: bbox
-          in: query
-          required: false
-          schema:
-            type: string
-          description: 'Optionaler Filter: lat1,lng1,lat2,lng2'
-          examples:
-            default:
-              value: 35.0,10.0,46.0,20.0
+      description: 'Optional mit bbox-Filter (lat1,lng1,lat2,lng2). **Rolle: Gast.**'
+      operationId: get_vessels_vessels_get
       responses:
         '200':
-          description: Liste der Fischereifahrzeuge
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/VesselResponse'
+                $ref: '#/components/schemas/VesselListResponse'
+          description: Schiffsliste
         '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /vessels/{mmsi}:
-    get:
+          description: Ungültige BBox
+      summary: Schiffe auflisten
       tags:
-        - Vessels
-      summary: Einzelnes Schiff abrufen
-      description: |
-        **Rolle: Gast (Ohne Login)**
+      - Vessels
+  /vessels/species/{species_id}:
+    get:
+      description: 'Gibt alle aktuell getrackten Schiffe innerhalb der Verbreitungszone
+        einer Fischart zurück. **Rolle: Gast.**'
+      operationId: get_species_vessels_vessels_species__species_id__get
       parameters:
-        - name: mmsi
-          in: path
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: '123456789'
+      - in: path
+        name: species_id
+        required: true
+        schema:
+          title: Species Id
+          type: string
       responses:
         '200':
-          description: Schiff gefunden
+          content:
+            application/json:
+              schema: {}
+          description: Liste der Schiffe
+        '404':
+          description: Fischart nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Schiffe in Verbreitungszone abrufen
+      tags:
+      - Vessels
+  /vessels/status:
+    get:
+      description: 'Gibt den aktuellen Verbindungsstatus des AIS-Streams zurück. **Rolle:
+        Gast.**'
+      operationId: ais_status_vessels_status_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: AIS-Verbindungsstatus
+      summary: AIS-Status abrufen
+      tags:
+      - Vessels
+  /vessels/{mmsi}:
+    get:
+      description: 'Suche nach MMSI-Nummer. **Rolle: Gast.**'
+      operationId: get_vessel_vessels__mmsi__get
+      parameters:
+      - in: path
+        name: mmsi
+        required: true
+        schema:
+          title: Mmsi
+          type: integer
+      responses:
+        '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VesselResponse'
+          description: Schiffsdaten
         '404':
-          $ref: '#/components/responses/NotFound'
-
-  /overlaps:
-    get:
-      tags:
-        - Overlaps
-      summary: Overlap-Score für alle Schiffe berechnen
-      description: |
-        **Rolle: Gast (Ohne Login)**
-        **Kern-Feature von OceanGuard. Aggregiert alle 3 externen APIs.**
-
-        Berechnet für jedes Fischereifahrzeug den Overlap-Score zur angegebenen Art.
-
-        **Score = D × (A × 0.6 + T × 0.4)**
-        - D = max(0, 1 - d / radius_km) — artspezifischer Cutoff, D=0 außerhalb der Zone
-        - A = max(0, 1 - sog / 10) — Aktivitätsfaktor via AIS-Geschwindigkeit
-        - T = max(0, 1 - |sst - temp_mid| / temp_range) — SST aus gecachtem 3-Punkte-Sampling
-
-        `month` ist optional — Default ist der aktuelle Monat.
-      parameters:
-        - name: species
-          in: query
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: thunnus-thynnus
-        - name: month
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 12
-          description: Monat (1–12). Default = aktueller Monat.
-          examples:
-            default:
-              value: 5
-      responses:
-        '200':
-          description: Overlap-Ergebnisse für alle Schiffe
+          description: Schiff nicht gefunden
+        '422':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OverlapListResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /overlaps/{mmsi}:
-    get:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Einzelnes Schiff abrufen
       tags:
-        - Overlaps
-      summary: Detail-Overlap-Score für ein einzelnes Schiff
-      description: |
-        **Rolle: Gast (Ohne Login)**
-        Zeigt aufgeschlüsselt, wie sich der Overlap-Score (D, A, T) für ein bestimmtes Schiff zusammensetzt.
-      parameters:
-        - name: mmsi
-          in: path
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: '123456789'
-        - name: species
-          in: query
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: thunnus-thynnus
-      responses:
-        '200':
-          description: Detail-Score mit D, A, T Komponenten
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OverlapDetailResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /marine-conditions:
-    get:
-      tags:
-        - Marine
-      summary: Aktuelle Meereskonditionen abrufen
-      description: |
-        **Rolle: Gast (Ohne Login)**
-        **Externe Datenquelle: Open-Meteo Marine API**
-
-        Gibt die aktuelle Sea Surface Temperature (SST) für einen Punkt zurück.
-        Intern wird die SST für den Overlap-Score aus dem 3-Punkte-Zonen-Cache verwendet.
-        Dieser Endpoint erlaubt den direkten Abruf für einen beliebigen Punkt.
-      parameters:
-        - name: lat
-          in: query
-          required: true
-          schema:
-            type: number
-          examples:
-            default:
-              value: 41.5
-        - name: lng
-          in: query
-          required: true
-          schema:
-            type: number
-          examples:
-            default:
-              value: 15.3
-      responses:
-        '200':
-          description: Meereskonditionen
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarineConditionsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /alerts:
-    get:
-      tags:
-        - Alerts
-      summary: Warnungen für kritische Overlap-Situationen
-      description: |
-       **Rolle: Gast (Ohne Login)**
-        Liefert alle Schiffe mit Score ≥ 0.4 (WARNUNG oder KRITISCH).
-        Schiffe mit Score < 0.4 (GERING) werden nicht zurückgegeben.
-        Monat = aktueller Monat (automatisch).
-      parameters:
-        - name: species
-          in: query
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: thunnus-thynnus
-      responses:
-        '200':
-          description: Liste der Warnungen
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AlertResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /favorites/species:
-    get:
-      tags:
-        - Favorites
-      summary: Gespeicherte Arten-Favoriten abrufen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Liste der Favoriten
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FavoriteSpeciesResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags:
-        - Favorites
-      summary: Fischart als Favorit speichern
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FavoriteSpeciesCreate'
-      responses:
-        '201':
-          description: Favorit gespeichert
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FavoriteSpeciesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /favorites/species/{species_id}:
-    delete:
-      tags:
-        - Favorites
-      summary: Arten-Favorit entfernen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: species_id
-          in: path
-          required: true
-          schema:
-            type: string
-          examples:
-            default:
-              value: thunnus-thynnus
-      responses:
-        '204':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /favorites/regions:
-    get:
-      tags:
-        - Favorites
-      summary: Gespeicherte Regions-Favoriten abrufen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Liste der Regions-Favoriten
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FavoriteRegionResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags:
-        - Favorites
-      summary: Region als Favorit speichern
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FavoriteRegionCreate'
-      responses:
-        '201':
-          description: Region gespeichert
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FavoriteRegionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /favorites/regions/{id}:
-    delete:
-      tags:
-        - Favorites
-      summary: Regions-Favorit entfernen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          examples:
-            default:
-              value: 1
-      responses:
-        '204':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /reports:
-    get:
-      tags:
-        - Reports
-      summary: Alle gespeicherten Reports abrufen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Liste der Reports
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ReportResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-    post:
-      tags:
-        - Reports
-      summary: Overlap-Snapshot als Report speichern
-      description: |
-        **Rolle: User (Mit Login)**
-        Speichert eine aktuelle Overlap-Berechnung als Report ab.
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReportCreate'
-      responses:
-        '201':
-          description: Report gespeichert
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /reports/compare:
-    get:
-      tags:
-        - Reports
-      summary: Zwei Reports vergleichen
-      description: |
-        **Rolle: User (Mit Login)**
-        Stellt zwei gespeicherte Reports gegenüber. Beide Reports müssen die gleiche Art haben.
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: ids
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Kommagetrennte Report-IDs
-          examples:
-            default:
-              value: 1,2
-      responses:
-        '200':
-          description: Vergleich der beiden Reports
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportCompareResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /reports/{id}:
-    get:
-      tags:
-        - Reports
-      summary: Einzelnen Report abrufen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          examples:
-            default:
-              value: 1
-      responses:
-        '200':
-          description: Report gefunden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    delete:
-      tags:
-        - Reports
-      summary: Report löschen
-      description: |
-        **Rolle: User (Mit Login)**
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          examples:
-            default:
-              value: 1
-      responses:
-        '204':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /admin/users:
-    get:
-      tags:
-        - Admin
-      summary: Alle User abrufen
-      description: |
-        **Rolle: Admin**
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Liste aller User
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /admin/users/{id}:
-    delete:
-      tags:
-        - Admin
-      summary: User löschen
-      description: |
-        **Rolle: Admin**
-        Admin kann sich nicht selbst löschen (→ 403).
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          examples:
-            default:
-              value: 1
-      responses:
-        '204':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /admin/users/{id}/role:
-    patch:
-      tags:
-        - Admin
-      summary: Rolle eines Users ändern
-      description: |
-        **Rolle: Admin**
-        Aktualisiert die Zugriffsberechtigungen (guest, user, admin) eines Nutzers.
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          examples:
-            default:
-              value: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                role:
-                  type: string
-                  enum:
-                    - guest
-                    - user
-                    - admin
-              required:
-                - role
-      responses:
-        '200':
-          description: Rolle aktualisiert
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /admin/system:
-    get:
-      tags:
-        - Admin
-      summary: System-Status abrufen
-      description: |
-        **Rolle: Admin**
-        Gibt Server-Metriken, Cache-Stats und Uptime zurück.
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: System-Status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SystemStatusResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: Firebase ID Token
-      description: Firebase ID Token im Authorization Header. Token via get_token.py holen.
-
-  responses:
-    BadRequest:
-      description: Ungültige Anfrage (fehlende oder falsche Parameter)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            default:
-              value:
-                detail: Bad request or validation error
-    Unauthorized:
-      description: Kein oder ungültiger Token
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            default:
-              value:
-                detail: Not authenticated
-    Forbidden:
-      description: Keine Berechtigung (falsche Rolle)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            default:
-              value:
-                detail: Role 'admin' required
-    NotFound:
-      description: Ressource nicht gefunden
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            default:
-              value:
-                detail: Not found
-    Conflict:
-      description: Ressourcenkonflikt (Datensatz existiert bereits)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            default:
-              value:
-                detail: Resource already exists
-    UnprocessableEntity:
-      description: Semantische Validierungsfehler in der Payload
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            default:
-              value:
-                detail: Unprocessable entity
-    NoContent:
-      description: Erfolgreich ausgeführt, keine Daten zurückgegeben
-
-  schemas:
-    ErrorResponse:
-      type: object
-      properties:
-        detail:
-          type: string
-
-    SyncRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          examples: ["John"]
-      required:
-        - name
-
-    UserResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          examples: [1]
-        email:
-          type: string
-          examples: ["john@example.com"]
-        name:
-          type: string
-          examples: ["Jane Doe"]
-        firebase_uid:
-          type: string
-          examples: ["firebase_uid_12345"]
-        role:
-          type: string
-          enum:
-            - guest
-            - user
-            - admin
-          default: user
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - email
-        - name
-        - firebase_uid
-
-    SpeciesCreate:
-      type: object
-      properties:
-        id:
-          type: string
-          examples: ["thunnus-thynnus"]
-        common_name:
-          type: string
-          examples: ["Roter Thun"]
-        scientific_name:
-          type: string
-          examples: ["Thunnus thynnus"]
-        region:
-          type: string
-          examples: ["Atlantik / Mittelmeer"]
-        temp_min:
-          type: number
-          examples: [15.0]
-        temp_max:
-          type: number
-          examples: [25.0]
-        temp_mid:
-          type: number
-          examples: [22.0]
-          description: Temperatur-Optimum der Art (Mitte des Optimalbereichs)
-        temp_range:
-          type: number
-          examples: [10.0]
-          description: Toleranzbreite R für T-Faktor im Overlap-Score
-        radius_km:
-          type: integer
-          default: 200
-          description: Zonen-Radius UND D-Cutoff im Score (Doppelfunktion)
-      required:
-        - id
-        - common_name
-        - scientific_name
-        - region
-
-    SpeciesPatch:
-      type: object
-      properties:
-        common_name:
-          type: string
-        scientific_name:
-          type: string
-        region:
-          type: string
-        temp_min:
-          type: number
-        temp_max:
-          type: number
-        temp_mid:
-          type: number
-        temp_range:
-          type: number
-        radius_km:
-          type: integer
-        active:
-          type: boolean
-
-    SpeciesResponse:
-      type: object
-      properties:
-        id:
-          type: string
-        common_name:
-          type: string
-        scientific_name:
-          type: string
-        region:
-          type: string
-        temp_min:
-          type: number
-        temp_max:
-          type: number
-        temp_mid:
-          type: number
-        temp_range:
-          type: number
-        radius_km:
-          type: integer
-        active:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    MigrationZone:
-      type: object
-      properties:
-        type:
-          type: string
-          examples: ["Feature"]
-        geometry:
-          type: object
-          properties:
-            type:
-              type: string
-              examples: ["Point"]
-            coordinates:
-              type: array
-              items:
-                type: number
-              examples: [[6.3, 40.1]]
-        properties:
-          type: object
-          properties:
-            species_id:
-              type: string
-              examples: ["thunnus-thynnus"]
-            month:
-              type: integer
-              examples: [5]
-            radius_km:
-              type: integer
-              examples: [200]
-            sighting_count:
-              type: integer
-              examples: [143]
-
-    VesselResponse:
-      type: object
-      properties:
-        mmsi:
-          type: string
-          examples: ["123456789"]
-        vessel_name:
-          type: string
-          examples: ["FV Atlantic Star"]
-        lat:
-          type: number
-          examples: [42.3]
-        lng:
-          type: number
-          examples: [5.1]
-        sog:
-          type: number
-          examples: [2.4]
-
-    OverlapDetailResponse:
-      type: object
-      properties:
-        mmsi:
-          type: string
-        vessel_name:
-          type: string
-        lat:
-          type: number
-        lng:
-          type: number
-        sog:
-          type: number
-        score:
-          type: number
-          examples: [0.87]
-          description: "Score = D × (A × 0.6 + T × 0.4)"
-        D:
-          type: number
-          description: "Distanz-Faktor: max(0, 1 - d/radius_km)"
-        A:
-          type: number
-          description: "Aktivitäts-Faktor: max(0, 1 - sog/10)"
-        T:
-          type: number
-          description: "Temperatur-Faktor: max(0, 1 - |sst-temp_mid|/temp_range)"
-        level:
-          type: string
-          enum: ["GERING", "WARNUNG", "KRITISCH"]
-          examples: ["KRITISCH"]
-
-    OverlapListResponse:
-      type: object
-      properties:
-        vessels:
-          type: array
-          items:
-            $ref: '#/components/schemas/OverlapDetailResponse'
-        stats:
-          type: object
-          properties:
-            count:
-              type: integer
-            avg_score:
-              type: number
-            max_score:
-              type: number
-        zone:
-          type: object
-          properties:
-            center_lat:
-              type: number
-            center_lng:
-              type: number
-            radius_km:
-              type: integer
-            month:
-              type: integer
-
-    MarineConditionsResponse:
-      type: object
-      properties:
-        sst:
-          type: number
-          description: Sea Surface Temperature in °C
-          examples: [21.5]
-
-    AlertResponse:
-      type: object
-      properties:
-        mmsi:
-          type: string
-        vessel_name:
-          type: string
-        score:
-          type: number
-        level:
-          type: string
-          enum: ["WARNUNG", "KRITISCH"]
-          examples: ["KRITISCH"]
-        lat:
-          type: number
-        lng:
-          type: number
-
-    FavoriteSpeciesCreate:
-      type: object
-      properties:
-        species_id:
-          type: string
-      required:
-        - species_id
-
-    FavoriteSpeciesResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-        species_id:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
-    FavoriteRegionCreate:
-      type: object
-      properties:
-        name:
-          type: string
-        bbox:
-          type: string
-          description: "JSON: [lat1, lng1, lat2, lng2]"
-      required:
-        - name
-        - bbox
-
-    FavoriteRegionResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-        name:
-          type: string
-        bbox:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
-    ReportCreate:
-      type: object
-      properties:
-        species_id:
-          type: string
-        bbox:
-          type: string
-        month:
-          type: integer
-      required:
-        - species_id
-        - bbox
-        - month
-
-    ReportResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-        species_id:
-          type: string
-        bbox:
-          type: string
-        month:
-          type: integer
-        snapshot:
-          type: string
-          description: "JSON stringified OverlapListResponse"
-        vessel_count:
-          type: integer
-        avg_score:
-          type: number
-        created_at:
-          type: string
-          format: date-time
-
-    ReportCompareResponse:
-      type: object
-      properties:
-        report_1:
-          $ref: '#/components/schemas/ReportResponse'
-        report_2:
-          $ref: '#/components/schemas/ReportResponse'
-        score_diff:
-          type: number
-        vessel_count_diff:
-          type: integer
-
-    SystemStatusResponse:
-      type: object
-      properties:
-        user_count:
-          type: integer
-          examples: [42]
-        species_count:
-          type: integer
-          examples: [4]
-        active_vessels:
-          type: integer
-          examples: [17]
-        cached_zones:
-          type: integer
-          examples: [48]
-        ais_connected:
-          type: boolean
-          examples: [true]
-        last_ais_message_at:
-          type: string
-          format: date-time
-        uptime_seconds:
-          type: integer
-          examples: [3600]
+      - Vessels
