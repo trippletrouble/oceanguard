@@ -18,7 +18,15 @@ router = APIRouter()
 # USER MANAGEMENT
 # ─────────────────────────────────────────────
 
-@router.get("/users", response_model=list[UserResponse], summary="Alle User auflisten (Admin)")
+@router.get(
+    "/users",
+    response_model=list[UserResponse],
+    summary="Alle User auflisten",
+    description="**Rolle: Admin.**",
+    responses={
+        200: {"description": "User-Liste"}
+    }
+)
 async def list_users(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin"))
@@ -31,7 +39,17 @@ async def list_users(
     return result.scalars().all()
 
 
-@router.delete("/users/{user_id}", status_code=204, summary="User löschen (Admin)")
+@router.delete(
+    "/users/{user_id}",
+    status_code=204,
+    summary="User löschen",
+    description="Admin kann sich nicht selbst löschen. **Rolle: Admin.**",
+    responses={
+        204: {"description": "User gelöscht"},
+        403: {"description": "Selbstlöschung nicht erlaubt"},
+        404: {"description": "User nicht gefunden"}
+    }
+)
 async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
@@ -55,7 +73,17 @@ async def delete_user(
     await db.commit()
 
 
-@router.patch("/users/{user_id}/role", response_model=UserResponse, summary="Rolle eines Users ändern (Admin)")
+@router.patch(
+    "/users/{user_id}/role",
+    response_model=UserResponse,
+    summary="User-Rolle ändern",
+    description="Erlaubte Rollen: guest, user, admin. **Rolle: Admin.**",
+    responses={
+        200: {"description": "Rolle geändert"},
+        400: {"description": "Ungültige Rolle"},
+        404: {"description": "User nicht gefunden"}
+    }
+)
 async def change_role(
     user_id: int,
     body: RoleUpdate,
@@ -83,7 +111,14 @@ async def change_role(
 # SYSTEM STATUS
 # ─────────────────────────────────────────────
 
-@router.get("/system", summary="System-Status abrufen (Admin)")
+@router.get(
+    "/system",
+    summary="Systemstatus abrufen",
+    description="Zeigt User-Anzahl, aktive Schiffe, gecachte Zonen, AIS-Status und Uptime. **Rolle: Admin.**",
+    responses={
+        200: {"description": "Systemstatus"}
+    }
+)
 async def system_status(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin"))

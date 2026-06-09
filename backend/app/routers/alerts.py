@@ -8,8 +8,15 @@ from app.services.overlap_service import compute_overlap
 router = APIRouter(prefix="/api/alerts", tags=["Threat Alerts"])
 
 
-@router.get("")
-# We're getting all the dangerous vessels with warning and critical levels
+@router.get(
+    "",
+    summary="Aktive Warnungen abrufen",
+    description="Gibt nur Schiffe mit Score >= 0.4 zurück (WARNUNG + KRITISCH). Parameter: species (Pflicht). **Rolle: Gast.**",
+    responses={
+        200: {"description": "Alert-Liste (kann leer sein)"},
+        404: {"description": "Art nicht gefunden"}
+    }
+)
 async def get_active_threat_alerts(
         species: str = Query(
             ...,

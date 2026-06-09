@@ -16,7 +16,16 @@ router = APIRouter(prefix="/api/overlap", tags=["Overlap Analysis"])
 
 
 # Computes threat level for all tracked vessels in a given species monitoring zone for a specified month
-@router.get("")
+@router.get(
+    "",
+    summary="Overlap-Score berechnen",
+    description="Berechnet den Overlap-Score für eine Art und einen Monat. Parameter: species (Pflicht), month (Optional, Default=aktueller Monat). **Rolle: Gast.**",
+    responses={
+        200: {"description": "Overlap-Ergebnis mit Scores und Zone"},
+        400: {"description": "Ungültiger Monat"},
+        404: {"description": "Art oder Zone nicht gefunden"}
+    }
+)
 async def get_overlaps(
     species_id: str = Query(..., description="The species ID (e.g., 'thunnus-thynnus')"),
     month: int | None = Query(None, ge=1, le=12, description="Month context (1-12). Defaults to current month."),
@@ -37,7 +46,15 @@ async def get_overlaps(
 
 
 # Computes threat assessment score for a single vessel in a specified species monitoring zone for the current month
-@router.get("/{mmsi}")
+@router.get(
+    "/{mmsi}",
+    summary="Overlap-Score für einzelnes Schiff",
+    description="Score eines bestimmten Schiffs gegen eine Art. Parameter: species (Pflicht). **Rolle: Gast.**",
+    responses={
+        200: {"description": "Einzelner Vessel-Score"},
+        404: {"description": "Schiff oder Art nicht gefunden"}
+    }
+)
 async def get_overlap_for_vessel(
     mmsi: int,
     species_id: str = Query(..., description="The species ID (e.g., 'thunnus-thynnus')"),
