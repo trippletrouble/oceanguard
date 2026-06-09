@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import pytest
 from unittest.mock import patch
 from app.tests.conftest import AUTH_HEADER

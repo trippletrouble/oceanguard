@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import firebase_admin.auth
+# pyrefly: ignore [missing-import]
+import firebase_admin.auth 
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import SyncRequest, UserResponse
