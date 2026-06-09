@@ -25,4 +25,4 @@ echo ""
 echo "Press Ctrl+C to stop both..."
 
 trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null" EXIT
-wait# write some script to start both servers at the same time
+wait

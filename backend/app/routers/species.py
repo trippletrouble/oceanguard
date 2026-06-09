@@ -18,7 +18,15 @@ router = APIRouter()
 # PUBLIC ENDPOINTS (Guest — kein Login nötig)
 # ─────────────────────────────────────────────
 
-@router.get("/", response_model=None, summary="Liste aller aktiven Fischarten")
+@router.get(
+    "/",
+    response_model=None,
+    summary="Alle aktiven Fischarten abrufen",
+    description="Gibt alle aktiven Arten zurück. **Rolle: Gast (kein Login nötig).**",
+    responses={
+        200: {"description": "Liste aller aktiven Arten"}
+    }
+)
 async def get_all_species(db: AsyncSession = Depends(get_db)):
     """
     Gibt alle Fischarten zurück, die als 'active' markiert sind.
@@ -29,14 +37,24 @@ async def get_all_species(db: AsyncSession = Depends(get_db)):
     return species_list
 
 
-@router.get("/{species_id}/migration", response_model=None, summary="Saisonale Verbreitungszone einer Art")
+@router.get(
+    "/{species_id}/migration",
+    response_model=None,
+    summary="Migrationszonen abrufen",
+    description="Gibt die berechnete Migrationszone für einen Monat zurück. **Rolle: Gast.**",
+    responses={
+        200: {"description": "GeoJSON Feature"},
+        400: {"description": "Ungültiger Monat"},
+        404: {"description": "Art nicht gefunden"}
+    }
+)
 async def get_migration_zone(
     species_id: str,
     month: int = Query(..., ge=1, le=12, description="Monat (1–12)"),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt die saisonale Migrationszone einer Art für einen bestimmten Monat zurück.
+    Gibt die saisonale Migrationszone(n) einer Art für einen bestimmten Monat zurück.
     Öffentlich zugänglich (Guest access).
     """
     result = await db.execute(select(Species).where(Species.id == species_id))
@@ -48,15 +66,15 @@ async def get_migration_zone(
             detail=f"Species with ID '{species_id}' not found"
         )
 
-    zones = obis_service.get_zones(species_id)
-    if zones is None:
+    zones_dict = obis_service.get_zones(species_id)
+    if zones_dict is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Zone data for '{species_id}' is not yet available. Please try again later."
         )
 
-    zone = zones.get(month)
-    if not zone:
+    month_zones = zones_dict.get(month)
+    if not month_zones:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No sighting data available for '{species_id}' in month {month}"
@@ -65,13 +83,27 @@ async def get_migration_zone(
     return {
         "species_id": species_id,
         "month": month,
-        "center": zone["center"],
-        "radius_km": zone["radius_km"],
-        "sighting_count": zone["sighting_count"]
+        "zones": [
+            {
+                "center": zone.get("center"),
+                "radius_km": zone.get("radius_km"),
+                "sighting_count": zone.get("sighting_count", 0)
+            }
+            for zone in month_zones
+        ]
     }
 
 
-@router.get("/{species_id}", response_model=None, summary="Details einer bestimmten Fischart")
+@router.get(
+    "/{species_id}",
+    response_model=None,
+    summary="Einzelne Fischart abrufen",
+    description="Gibt Details einer Art zurück. **Rolle: Gast.**",
+    responses={
+        200: {"description": "Art-Details"},
+        404: {"description": "Art nicht gefunden"}
+    }
+)
 async def get_species_by_id(species_id: str, db: AsyncSession = Depends(get_db)):
     """
     Gibt die Details einer Fischart anhand der ID zurück.
@@ -93,7 +125,18 @@ async def get_species_by_id(species_id: str, db: AsyncSession = Depends(get_db))
 # ADMIN ENDPOINTS (require_role("admin"))
 # ─────────────────────────────────────────────
 
-@router.post("/", response_model=None, status_code=201, summary="Neue Fischart anlegen (Admin)")
+@router.post(
+    "/",
+    response_model=None,
+    status_code=201,
+    summary="Neue Fischart anlegen",
+    description="Erstellt eine neue Art. **Rolle: Admin.**",
+    responses={
+        201: {"description": "Art erstellt"},
+        409: {"description": "Art existiert bereits"},
+        422: {"description": "Validierungsfehler"}
+    }
+)
 async def create_species(
     data: SpeciesCreate,
     db: AsyncSession = Depends(get_db),
@@ -129,7 +172,17 @@ async def create_species(
     return species
 
 
-@router.put("/{species_id}", response_model=None, summary="Fischart vollständig ersetzen (Admin)")
+@router.put(
+    "/{species_id}",
+    response_model=None,
+    summary="Fischart vollständig aktualisieren",
+    description="Ersetzt alle Felder einer Art. **Rolle: Admin.**",
+    responses={
+        200: {"description": "Art aktualisiert"},
+        404: {"description": "Art nicht gefunden"},
+        422: {"description": "Validierungsfehler"}
+    }
+)
 async def update_species(
     species_id: str,
     data: SpeciesCreate,
@@ -154,7 +207,17 @@ async def update_species(
     return species
 
 
-@router.patch("/{species_id}", response_model=None, summary="Fischart teilweise aktualisieren (Admin)")
+@router.patch(
+    "/{species_id}",
+    response_model=None,
+    summary="Fischart teilweise aktualisieren",
+    description="Aktualisiert einzelne Felder. **Rolle: Admin.**",
+    responses={
+        200: {"description": "Art aktualisiert"},
+        404: {"description": "Art nicht gefunden"},
+        422: {"description": "Validierungsfehler"}
+    }
+)
 async def patch_species(
     species_id: str,
     data: SpeciesPatch,
@@ -182,7 +245,16 @@ async def patch_species(
     return species
 
 
-@router.delete("/{species_id}", status_code=204, summary="Fischart deaktivieren (Admin — Soft Delete)")
+@router.delete(
+    "/{species_id}",
+    status_code=204,
+    summary="Fischart deaktivieren (Soft-Delete)",
+    description="Setzt active=False. Daten bleiben erhalten. **Rolle: Admin.**",
+    responses={
+        204: {"description": "Deaktiviert"},
+        404: {"description": "Art nicht gefunden"}
+    }
+)
 async def delete_species(
     species_id: str,
     db: AsyncSession = Depends(get_db),

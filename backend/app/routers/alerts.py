@@ -5,23 +5,27 @@ from datetime import datetime
 from app.database import get_db
 from app.services.overlap_service import compute_overlap
 
-router = APIRouter(prefix="/api/alerts", tags=["Threat Alerts"])
+router = APIRouter(prefix="/alerts", tags=["Threat Alerts"])
 
 
-@router.get("")
-# We're getting all the dangerous vessels with warning and critical levels
+@router.get(
+    "",
+    summary="Aktive Warnungen abrufen",
+    description="Gibt nur Schiffe mit Score >= 0.4 zurück (WARNUNG + KRITISCH). Parameter: species (Pflicht). **Rolle: Gast.**",
+    responses={
+        200: {"description": "Alert-Liste (kann leer sein)"},
+        404: {"description": "Art nicht gefunden"}
+    }
+)
 async def get_active_threat_alerts(
-        species: str = Query(
-            ...,
-            description="The species ID code (e.g., 'thunnus-thynnus')"
-        ),
+        species_id: str = Query(..., description="The species ID (e.g., 'sardina-pilchardus')"),
         db: AsyncSession = Depends(get_db)
 ):
     current_month = datetime.now().month
 
     try:
         analysis_payload = await compute_overlap(
-            species_id=species,
+            species_id=species_id,
             month=current_month,
             db=db
         )
@@ -32,10 +36,10 @@ async def get_active_threat_alerts(
             {
                 "mmsi": str(vessel["mmsi"]),
                 "vessel_name": vessel["vessel_name"],
-                "species_id": species,
+                "species_id": species_id,
                 "score": vessel["score"],
                 "risk_level": vessel["level"],
-                "message": f"Fishing vessel operating inside critical distribution zone of species: {species}"
+                "message": f"Fishing vessel operating inside critical distribution zone of species: {species_id}"
             }
             for vessel in tracked_vessels
             if vessel.get("score", 0.0) >= 0.4 or vessel.get("level") in ["WARNING", "CRITICAL"]

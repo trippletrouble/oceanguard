@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import firebase_admin.auth
+# pyrefly: ignore [missing-import]
+import firebase_admin.auth 
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import SyncRequest, UserResponse
@@ -12,7 +13,17 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-@router.post("/sync", response_model=UserResponse, summary="User synchronisieren")
+@router.post(
+    "/sync",
+    response_model=UserResponse,
+    summary="Firebase-User synchronisieren",
+    description="Verifiziert Firebase-Token und erstellt/aktualisiert User in lokaler DB. **Rolle: Alle mit gültigem Token.**",
+    responses={
+        200: {"description": "User existiert bereits"},
+        201: {"description": "Neuer User erstellt"},
+        401: {"description": "Token ungültig"}
+    }
+)
 async def sync_user(
     req: SyncRequest,
     response: Response,
@@ -54,12 +65,30 @@ async def sync_user(
     return new_user
 
 
-@router.get("/me", response_model=UserResponse, summary="Aktuellen User abrufen")
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Aktuellen User abrufen",
+    description="Gibt den eingeloggten User zurück. **Rolle: User/Admin.**",
+    responses={
+        200: {"description": "User-Daten"},
+        401: {"description": "Nicht eingeloggt"}
+    }
+)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.post("/logout", summary="Logout", status_code=204)
+@router.post(
+    "/logout",
+    summary="Logout",
+    description="Loggt den User aus. **Rolle: User/Admin.**",
+    status_code=204,
+    responses={
+        204: {"description": "Erfolgreich ausgeloggt"},
+        401: {"description": "Nicht eingeloggt"}
+    }
+)
 async def logout(current_user: User = Depends(get_current_user)):
     # Logout passiert client-seitig via Firebase signOut()
     return

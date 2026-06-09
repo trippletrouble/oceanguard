@@ -4,6 +4,10 @@ import json
 import asyncio
 from datetime import datetime
 from typing import List, Dict, Optional
+import numpy as np
+from sklearn.cluster import DBSCAN
+from fastapi import HTTPException
+from app.services.meteo_service import get_sst
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +183,7 @@ class OBISService:
         logger.error(f"OBIS All Retries Exhausted for {scientific_name}")
         return []
 
-    def calculate_zones(self, species_id: str, occurrences: List[Dict]) -> Dict[int, Dict]:
+    async def calculate_zones(self, species_id: str, occurrences: List[Dict]) -> Dict[int, List[Dict]]:
         if not occurrences or not isinstance(occurrences, list):
             logger.warning(f"Invalid occurrences input for {species_id}: Expected list, got {type(occurrences)}")
             return {}
@@ -187,49 +191,58 @@ class OBISService:
         monthly_groups = {m: [] for m in range(1, 13)}
         radius = self.SPECIES_CONFIG.get(species_id, {}).get("radius", 200)
 
-        for idx, occ in enumerate(occurrences):
+        for occ in occurrences:
             try:
-                if not isinstance(occ, dict):
-                    continue
-
-                lat = occ.get("decimalLatitude")
-                lng = occ.get("decimalLongitude")
+                lat, lng = occ.get("decimalLatitude"), occ.get("decimalLongitude")
                 date_str = occ.get("eventDate")
-
-                if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
-                    continue
-
-                if not date_str:
+                if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)) or not date_str:
                     continue
 
                 date = datetime.fromisoformat(date_str.split('T')[0])
-                month = date.month
-                monthly_groups[month].append((lat, lng))
-
-            except (ValueError, KeyError, TypeError, AttributeError):
-                continue
-            except Exception as e:
-                logger.error(f"Unexpected error processing occurrence {idx} for {species_id}: {str(e)}")
+                monthly_groups[date.month].append((lat, lng))
+            except (ValueError, AttributeError, TypeError):
                 continue
 
-        calculated_zones = {}
+        calculated_zones = {m: [] for m in range(1, 13)}
         for month, coords in monthly_groups.items():
-            if not coords:
+            if len(coords) < 3: # should be minimum 3 points to avoid "noise"
                 continue
 
-            # Calculate center point
-            try:
-                avg_lat = sum(c[0] for c in coords) / len(coords)
-                avg_lng = sum(c[1] for c in coords) / len(coords)
+            # Convert to radians for Haversine metric clustering
+            coords_array = np.radians(np.array(coords))
+            epsilon = radius / 6371.0
 
-                calculated_zones[month] = {
-                    "center": {"lat": avg_lat, "lng": avg_lng},
-                    "radius_km": radius,
-                    "sighting_count": len(coords)
-                }
-            except Exception as e:
-                logger.error(f"Error calculating zone for {species_id} month {month}: {str(e)}")
-                continue
+            db = DBSCAN(eps=epsilon, min_samples=3, algorithm='ball_tree', metric='haversine').fit(coords_array)
+            unique_labels = set(db.labels_)
+
+            for label in unique_labels:
+                if label == -1:  # Skip noise/outliers
+                    continue
+
+                cluster_coords = [coords[i] for i in range(len(coords)) if db.labels_[i] == label]
+                avg_lat = sum(c[0] for c in cluster_coords) / len(cluster_coords)
+                avg_lng = sum(c[1] for c in cluster_coords) / len(cluster_coords)
+
+                # To prevent showing fish on land
+                is_water = True
+                try:
+                    await get_sst(avg_lat, avg_lng)
+                except HTTPException as e:
+                    if e.status_code == 404:
+                        logger.info(f"Discarded land-based cluster for {species_id} at {avg_lat}, {avg_lng}")
+                        is_water = False
+                    else:
+                        logger.warning(f"Meteo API returned {e.status_code}. Keeping cluster as fallback.")
+                except Exception as e:
+                    logger.warning(
+                        f"Meteo check timed out or failed ({type(e).__name__}). Keeping cluster as fallback.")
+
+                if is_water:
+                    calculated_zones[month].append({
+                        "center": {"lat": avg_lat, "lng": avg_lng},
+                        "radius_km": radius,
+                        "sighting_count": len(cluster_coords)
+                    })
 
         return calculated_zones
 
@@ -250,7 +263,7 @@ class OBISService:
                 return
 
             try:
-                zones = self.calculate_zones(species_id, occurrences)
+                zones = await self.calculate_zones(species_id, occurrences)
                 if not zones:
                     return
 
