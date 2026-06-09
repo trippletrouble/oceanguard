@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.auth.dependencies import get_current_user
 from app.database import get_db
-from app.schemas.favorite import FavoriteSpeciesCreate, FavoriteSpeciesResponse
-from app.models.favorite import FavoriteSpecies
+from app.schemas.favorite import FavoriteSpeciesCreate, FavoriteSpeciesResponse, FavoriteRegionCreate, FavoriteRegionResponse
+from app.models.favorite import FavoriteSpecies, FavoriteRegion
 from app.models.species import Species
 
 router = APIRouter()
@@ -66,4 +66,52 @@ async def remove_favorite_species(
         raise HTTPException(status_code=404, detail="Favorite not found")
     
     await db.delete(fav)
+    await db.commit()
+
+
+# Region Favorites
+
+@router.get("/regions")
+async def get_favorite_regions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(FavoriteRegion).where(FavoriteRegion.user_id == current_user.id)
+    )
+    return result.scalars().all()
+
+@router.post("/regions", status_code=201)
+async def add_favorite_region(
+    data: FavoriteRegionCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    region = FavoriteRegion(
+        user_id=current_user.id,
+        region_name=data.region_name,
+        bbox=data.bbox
+    )
+    db.add(region)
+    await db.commit()
+    await db.refresh(region)
+    return region
+
+@router.delete("/regions/{region_id}", status_code=204)
+async def remove_favorite_region(
+    region_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(FavoriteRegion).where(
+            FavoriteRegion.user_id == current_user.id,
+            FavoriteRegion.id == region_id
+        )
+    )
+    region = result.scalar_one_or_none()
+    if not region:
+        raise HTTPException(status_code=404, detail="Favorite Region not found")
+    
+    await db.delete(region)
     await db.commit()
