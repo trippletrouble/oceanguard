@@ -71,3 +71,5 @@ uvloop==0.22.1; sys_platform != 'win32'
 watchfiles==1.1.1
 websockets==16.0
 wrapworks==1.1.2
+numpy==2.4.1
+scikit-learn>=1.6.1
