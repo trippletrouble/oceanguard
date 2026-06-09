@@ -392,19 +392,19 @@ paths:
       summary: User-Rolle ändern
       tags:
       - Admin
-  /api/alerts:
+  /alerts:
     get:
       description: 'Gibt nur Schiffe mit Score >= 0.4 zurück (WARNUNG + KRITISCH).
         Parameter: species (Pflicht). **Rolle: Gast.**'
-      operationId: get_active_threat_alerts_api_alerts_get
+      operationId: get_active_threat_alerts_alerts_get
       parameters:
-      - description: The species ID code (e.g., 'thunnus-thynnus')
+      - description: The species ID (e.g., 'sardina-pilchardus')
         in: query
-        name: species
+        name: species_id
         required: true
         schema:
-          description: The species ID code (e.g., 'thunnus-thynnus')
-          title: Species
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
           type: string
       responses:
         '200':
@@ -424,90 +424,6 @@ paths:
       tags:
       - Threat Alerts
       - Threat Alerts
-  /api/overlap:
-    get:
-      description: 'Berechnet den Overlap-Score für eine Art und einen Monat. Parameter:
-        species (Pflicht), month (Optional, Default=aktueller Monat). **Rolle: Gast.**'
-      operationId: get_overlaps_api_overlap_get
-      parameters:
-      - description: The species ID (e.g., 'thunnus-thynnus')
-        in: query
-        name: species_id
-        required: true
-        schema:
-          description: The species ID (e.g., 'thunnus-thynnus')
-          title: Species Id
-          type: string
-      - description: Month context (1-12). Defaults to current month.
-        in: query
-        name: month
-        required: false
-        schema:
-          anyOf:
-          - maximum: 12
-            minimum: 1
-            type: integer
-          - type: 'null'
-          description: Month context (1-12). Defaults to current month.
-          title: Month
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Overlap-Ergebnis mit Scores und Zone
-        '400':
-          description: Ungültiger Monat
-        '404':
-          description: Art oder Zone nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Overlap-Score berechnen
-      tags:
-      - Overlap Analysis
-      - Overlap Analysis
-  /api/overlap/{mmsi}:
-    get:
-      description: 'Score eines bestimmten Schiffs gegen eine Art. Parameter: species
-        (Pflicht). **Rolle: Gast.**'
-      operationId: get_overlap_for_vessel_api_overlap__mmsi__get
-      parameters:
-      - in: path
-        name: mmsi
-        required: true
-        schema:
-          title: Mmsi
-          type: integer
-      - description: The species ID (e.g., 'thunnus-thynnus')
-        in: query
-        name: species_id
-        required: true
-        schema:
-          description: The species ID (e.g., 'thunnus-thynnus')
-          title: Species Id
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Einzelner Vessel-Score
-        '404':
-          description: Schiff oder Art nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Overlap-Score für einzelnes Schiff
-      tags:
-      - Overlap Analysis
-      - Overlap Analysis
   /auth/logout:
     post:
       description: 'Loggt den User aus. **Rolle: User/Admin.**'
@@ -609,6 +525,90 @@ paths:
       summary: Marine-Bedingungen abrufen
       tags:
       - Marine
+  /overlap:
+    get:
+      description: 'Berechnet den Overlap-Score für eine Art und einen Monat. Parameter:
+        species (Pflicht), month (Optional, Default=aktueller Monat). **Rolle: Gast.**'
+      operationId: get_overlaps_overlap_get
+      parameters:
+      - description: The species ID (e.g., 'sardina-pilchardus')
+        in: query
+        name: species_id
+        required: true
+        schema:
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+          type: string
+      - description: Month context (1-12). Defaults to current month.
+        in: query
+        name: month
+        required: false
+        schema:
+          anyOf:
+          - maximum: 12
+            minimum: 1
+            type: integer
+          - type: 'null'
+          description: Month context (1-12). Defaults to current month.
+          title: Month
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Overlap-Ergebnis mit Scores und Zone
+        '400':
+          description: Ungültiger Monat
+        '404':
+          description: Art oder Zone nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Overlap-Score berechnen
+      tags:
+      - Overlap Analysis
+      - Overlap Analysis
+  /overlap/{mmsi}:
+    get:
+      description: 'Score eines bestimmten Schiffs gegen eine Art. Parameter: species
+        (Pflicht). **Rolle: Gast.**'
+      operationId: get_overlap_for_vessel_overlap__mmsi__get
+      parameters:
+      - in: path
+        name: mmsi
+        required: true
+        schema:
+          title: Mmsi
+          type: integer
+      - description: The species ID (e.g., 'sardina-pilchardus')
+        in: query
+        name: species_id
+        required: true
+        schema:
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Einzelner Vessel-Score
+        '404':
+          description: Schiff oder Art nicht gefunden
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Overlap-Score für einzelnes Schiff
+      tags:
+      - Overlap Analysis
+      - Overlap Analysis
   /species/:
     get:
       description: 'Gibt alle aktiven Arten zurück. **Rolle: Gast (kein Login nötig).**'
