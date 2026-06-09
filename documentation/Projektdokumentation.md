@@ -64,16 +64,25 @@ Unser eigener REST Web Service **kombiniert** diese Daten und berechnet den Over
 
 Unser Backend konsumiert die drei externen APIs und bietet dem Frontend über eine **saubere REST-Schnittstelle** aufbereitete, kombinierte Daten an.
 
-### Kern-Endpoints (Entwurf):
+### Kern-Endpoints (Tatsächliche Implementierung):
 
-| Endpoint | Beschreibung |
-|---|---|
-| `GET /api/species` | Liste aller unterstützten Fischarten |
-| `GET /api/species/{id}/migration?month=` | Saisonale Verbreitungszone einer Art pro Monat (GeoJSON) |
-| `GET /api/vessels?bbox=&type=fishing` | Aktuelle Fischereifahrzeuge in einer Region |
-| `GET /api/overlap?species=&month=&bbox=` | **Kern:** Overlap-Score Berechnung |
-| `GET /api/marine-conditions?lat=&lng=` | Meeresbedingungen an einem Punkt |
-| `GET /api/alerts?species=&bbox=` | Aktive Warnungen |
+| Methode | Endpoint | Beschreibung |
+|---|---|---|
+| `GET` | `/species/` | Liste aller aktiven Fischarten (öffentlich) |
+| `GET` | `/species/{species_id}` | Details einer bestimmten Fischart (öffentlich) |
+| `GET` | `/species/{species_id}/migration?month=` | Saisonale Verbreitungszone einer Art pro Monat (GeoJSON) (öffentlich) |
+| `GET` | `/vessels` | Liste aller getrackten Schiffe (öffentlich) |
+| `GET` | `/vessels/{mmsi}` | Einzelnes Schiff abrufen (öffentlich) |
+| `GET` | `/vessels/species/{species_id}` | Schiffe in der BBox einer bestimmten Fischart (öffentlich) |
+| `GET` | `/vessels/status` | Status der AIS WebSocket-Verbindung (öffentlich) |
+| `GET` | `/overlap?species_id=&month=` | **Kern:** Overlap-Score Berechnung für alle Schiffe |
+| `GET` | `/overlap/{mmsi}?species_id=` | Overlap-Score Berechnung für ein einzelnes Schiff |
+| `GET` | `/alerts?species_id=` | Aktive Warnungen für Schiffe mit Score >= 0.4 (öffentlich) |
+| `GET` | `/marine-conditions?lat=&lng=` | Meeresbedingungen an einem Punkt |
+| `GET` | `/admin/users` | Liste aller registrierten Benutzer (Admin) |
+| `DELETE`| `/admin/users/{user_id}` | Benutzer löschen (Admin, Selbstlöschung 403) |
+| `PATCH` | `/admin/users/{user_id}/role` | Benutzerrolle ändern (Admin) |
+| `GET` | `/admin/system` | Live System-Status / Telemetrie (Admin) |
 
 ### Overlap-Score Algorithmus
 
@@ -84,6 +93,16 @@ Wobei:
 - **D** = Distanz-Faktor (Wie nah ist das Schiff an der Verbreitungszone?)
 - **A** = Aktivitäts-Faktor (Wie wahrscheinlich fischt das Schiff aktiv?)
 - **T** = Temperatur-Faktor (Passt die aktuelle Wassertemperatur zum Optimum der Art?)
+
+#### ⚙️ Multi-Zonen & Tournament-Selection Pattern
+Da eine Fischart in einem Monat mehrere geografisch getrennte Hotspots (Cluster-Zentren) haben kann (berechnet mittels **DBSCAN** aus OBIS-Sichtungen), wurde der Algorithmus wie folgt erweitert:
+
+1. **Zonen-spezifische Temperatur**: Das Backend lädt für jedes der berechneten Cluster-Zentren die jeweils lokale Meeresoberflächentemperatur (SST) von Open-Meteo herunter.
+2. **Schleife über alle Zonen**: Für jedes Schiff wird der Score $Score_i$ für jede einzelne dieser Zonen $i$ separat berechnet.
+3. **Tournament-Auswahl (`get_best_evaluation_for_vessel`)**: 
+   Das Schiff wird derjenigen Zone zugeordnet, bei der es den **höchsten Bedrohungsscore** erzielt. 
+4. **Tie-Breaker für Schiffe außerhalb der Zonen ("Out of Bounds")**:
+   Wenn ein Schiff außerhalb des Radius aller Zonen liegt und somit überall einen Score von `0.0` erzielt, wird es über einen geografischen **Tie-Breaker** derjenigen Zone zugeordnet, die am nächsten an seinen aktuellen Koordinaten liegt. Das verhindert Zuordnungsfehler und ordnet auch inaktive Schiffe der korrekten geografischen Zone zu.
 
 #### Warum multiplikativ?
 
