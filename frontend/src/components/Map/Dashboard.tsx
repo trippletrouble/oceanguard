@@ -97,9 +97,9 @@ export default function SidebarDashboard({
                   (r) => r.id === e.target.value,
                 );
                 if (fishRegion) {
-                  const supportsCurrentFilter = fishRegion.regionNames.includes(
-                    SEAS[filterSeaIndex].name,
-                  );
+                  const supportsCurrentFilter =
+                    filterSeaIndex === 0 ||
+                    fishRegion.regionNames.includes(SEAS[filterSeaIndex].name);
                   if (
                     !supportsCurrentFilter &&
                     fishRegion.regionNames.length > 0
@@ -187,10 +187,18 @@ export default function SidebarDashboard({
                 key={data.region.id}
                 onClick={() => {
                   setSelectedFish(data.region.id);
-                  const newSeaIndex = SEAS.findIndex((s) =>
-                    data.region.regionNames.includes(s.name),
-                  );
-                  if (newSeaIndex !== -1) setSeaIndex(newSeaIndex);
+                  const supportsCurrentFilter =
+                    filterSeaIndex === 0 ||
+                    data.region.regionNames.includes(SEAS[filterSeaIndex].name);
+                  if (!supportsCurrentFilter && data.region.regionNames.length > 0) {
+                    const newSeaIndex = SEAS.findIndex((s) =>
+                      data.region.regionNames.includes(s.name),
+                    );
+                    if (newSeaIndex !== -1) {
+                      setSeaIndex(newSeaIndex);
+                      setFilterSeaIndex(newSeaIndex);
+                    }
+                  }
                 }}
                 className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
                   isHighlighted
