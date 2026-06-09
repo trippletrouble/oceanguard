@@ -6,7 +6,7 @@ import {
   fetchMigrationZone,
   fetchVesselOverlaps,
 } from "../services/api";
-import { type Vessel, type RegionData, SEAS } from "@/types/map";
+import { type Vessel, type RegionData, SEAS, getClosestSea } from "@/types/map";
 
 import MapCanvas from "@/components/Map/MapCanvas";
 import TopNavigation from "@/components/Map/TopNavigation";
@@ -28,43 +28,72 @@ export default function MapPage() {
     staleTime: 60 * 60 * 1000,
   });
 
+  const { data: rawZones } = useQuery({
+    queryKey: ["migration-zones", currentMonth],
+    queryFn: async () => {
+      if (!rawSpecies) return [];
+      const activeSpecies = rawSpecies.filter((sp: any) => sp.active);
+      return await Promise.all(
+        activeSpecies.map(async (sp: any) => {
+          const zoneData = await fetchMigrationZone(
+            sp.id,
+            currentMonth,
+          ).catch(() => null);
+          return { speciesId: sp.id, zoneData };
+        }),
+      );
+    },
+    staleTime: 15 * 60 * 1000,
+    enabled: !!rawSpecies && rawSpecies.length > 0,
+  });
+
   const REGIONS_DATA: RegionData[] = useMemo(() => {
     if (!rawSpecies) return [];
     return rawSpecies
       .filter((sp: any) => sp.active)
       .map((sp: any) => {
-        const lowerRegion = (sp.region || "").toLowerCase();
-        const matchedSeas: string[] = [];
+        const matchedSeas = new Set<string>();
 
-        if (sp.id === "sardina-pilchardus") {
-          matchedSeas.push(
-            "North Sea",
-            "European Atlantic Coast",
-            "Mediterranean Sea",
-          );
-        } else {
+        const speciesZones = rawZones?.find((z: any) => z.speciesId === sp.id)?.zoneData?.zones;
+
+        if (speciesZones && speciesZones.length > 0) {
+          speciesZones.forEach((zone: any) => {
+            const lng = zone.center?.lng ?? zone.center?.[0];
+            const lat = zone.center?.lat ?? zone.center?.[1];
+            if (lng !== undefined && lat !== undefined) {
+              const closestSeaName = getClosestSea(lng, lat);
+              matchedSeas.add(closestSeaName);
+            }
+          });
+        }
+
+        if (matchedSeas.size === 0) {
+          const lowerRegion = (sp.region || "").toLowerCase();
           if (lowerRegion.includes("north sea")) {
-            matchedSeas.push("North Sea");
+            matchedSeas.add("North Sea");
           }
           if (lowerRegion.includes("mediterranean")) {
-            matchedSeas.push("Mediterranean Sea");
+            matchedSeas.add("Mediterranean Sea");
           }
           if (
             lowerRegion.includes("atlantic") &&
             !lowerRegion.includes("north atlantic")
           ) {
-            matchedSeas.push("European Atlantic Coast");
+            matchedSeas.add("European Atlantic Coast");
           }
         }
 
-        if (matchedSeas.length === 0) matchedSeas.push(SEAS[0].name);
+        if (matchedSeas.size === 0) {
+          matchedSeas.add(SEAS[0].name);
+        }
 
+        const matchedSeasArray = Array.from(matchedSeas);
         const primarySea =
-          SEAS.find((s) => s.name === matchedSeas[0]) || SEAS[0];
+          SEAS.find((s) => s.name === matchedSeasArray[0]) || SEAS[0];
 
         return {
           id: sp.id,
-          regionNames: matchedSeas,
+          regionNames: matchedSeasArray,
           commonSpeciesName: sp.common_name,
           scientificSpeciesName: sp.scientific_name,
           active: sp.active,
@@ -72,24 +101,15 @@ export default function MapPage() {
           fallbackCenter: primarySea.center as [number, number],
         };
       });
-  }, [rawSpecies]);
+  }, [rawSpecies, rawZones]);
 
-  const { data: zonesData } = useQuery({
-    queryKey: ["migration-zones", currentMonth],
-    queryFn: async () => {
-      return await Promise.all(
-        REGIONS_DATA.map(async (region) => {
-          const zoneData = await fetchMigrationZone(
-            region.id,
-            currentMonth,
-          ).catch(() => null);
-          return { region, zoneData };
-        }),
-      );
-    },
-    staleTime: 15 * 60 * 1000,
-    enabled: REGIONS_DATA.length > 0,
-  });
+  const zonesData = useMemo(() => {
+    if (!rawZones || REGIONS_DATA.length === 0) return [];
+    return rawZones.map((z: any) => {
+      const region = REGIONS_DATA.find((r) => r.id === z.speciesId);
+      return { region, zoneData: z.zoneData };
+    });
+  }, [rawZones, REGIONS_DATA]);
 
   const { data: trackerData } = useQuery({
     queryKey: ["live-tracker", currentMonth],
