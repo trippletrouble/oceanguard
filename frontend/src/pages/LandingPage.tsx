@@ -12,7 +12,7 @@ export default function LandingPage() {
 
   if (isLoading) {
     return (
-      <div className="w-screen h-screen flex flex-col items-center justify-center bg-ocean text-white font-cal">
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-ocean text-white font-cal select-none">
         <div className="relative w-18 h-18 flex items-center justify-center mb-8">
           <div className="wave-ripple"></div>
           <div className="wave-ripple wave-ripple-delayed"></div>
@@ -25,9 +25,29 @@ export default function LandingPage() {
   return (
     <>
       <Header />
-      <div className="pt-32">
-        <Fishes speciesData={rawSpecies} />
-      </div>
+      <main className="w-full font-cal overflow-x-hidden">
+        <section className="min-h-screen w-full flex flex-col gap-4 justify-center items-center text-center max-w-xl mx-auto pt-20">
+          <h1 className="title uppercase font-righteous tracking-tighter animate-float-heading">
+            Ocean
+            <br />
+            Guard
+          </h1>
+
+          <p className="max-w-md mx-auto text-center text-xl md:text-2xl mt-6 mb-8 leading-relaxed text-balance animate-float-text">
+            Critical ocean data exists—but without integration, high-risk
+            fishing activity goes undetected.
+          </p>
+
+          <button
+            onClick={() => (window.location.href = "/map")}
+            className="animate-float-btn cursor-pointer font-medium text-lg md:text-xl rounded-full w-full max-w-sm py-4 shadow-xl bg-linear-to-r from-[#FF6C6C] to-white hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+          >
+            View Live Risk Map
+          </button>
+        </section>
+
+        <Fishes speciesData={rawSpecies || []} />
+      </main>
     </>
   );
 }

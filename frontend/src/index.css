@@ -21,6 +21,42 @@
   }
 }
 
+@keyframes oceanFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(-0.03deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(0.03deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(-0.01deg);
+  }
+}
+
+.animate-float-heading {
+  animation: oceanFloat 6s ease-in-out infinite;
+}
+
+.animate-float-text {
+  animation: oceanFloat 6s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+.animate-float-btn {
+  animation: oceanFloat 6s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
+.title {
+  font-size: 12rem;
+  letter-spacing: -10%;
+  line-height: 67%;
+}
+
 .glass-card {
   min-height: 18rem;
   transition: all 0.5s ease;
