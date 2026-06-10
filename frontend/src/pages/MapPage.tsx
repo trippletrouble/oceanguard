@@ -35,10 +35,9 @@ export default function MapPage() {
       const activeSpecies = rawSpecies.filter((sp: any) => sp.active);
       return await Promise.all(
         activeSpecies.map(async (sp: any) => {
-          const zoneData = await fetchMigrationZone(
-            sp.id,
-            currentMonth,
-          ).catch(() => null);
+          const zoneData = await fetchMigrationZone(sp.id, currentMonth).catch(
+            () => null,
+          );
           return { speciesId: sp.id, zoneData };
         }),
       );
@@ -49,58 +48,57 @@ export default function MapPage() {
 
   const REGIONS_DATA: RegionData[] = useMemo(() => {
     if (!rawSpecies) return [];
-    return rawSpecies
-      .filter((sp: any) => sp.active)
-      .map((sp: any) => {
-        const matchedSeas = new Set<string>();
+    return rawSpecies.map((sp: any) => {
+      const matchedSeas = new Set<string>();
 
-        const speciesZones = rawZones?.find((z: any) => z.speciesId === sp.id)?.zoneData?.zones;
+      const speciesZones = rawZones?.find((z: any) => z.speciesId === sp.id)
+        ?.zoneData?.zones;
 
-        if (speciesZones && speciesZones.length > 0) {
-          speciesZones.forEach((zone: any) => {
-            const lng = zone.center?.lng ?? zone.center?.[0];
-            const lat = zone.center?.lat ?? zone.center?.[1];
-            if (lng !== undefined && lat !== undefined) {
-              const closestSeaName = getClosestSea(lng, lat);
-              matchedSeas.add(closestSeaName);
-            }
-          });
-        }
-
-        if (matchedSeas.size === 0) {
-          const lowerRegion = (sp.region || "").toLowerCase();
-          if (lowerRegion.includes("north sea")) {
-            matchedSeas.add("North Sea");
+      if (speciesZones && speciesZones.length > 0) {
+        speciesZones.forEach((zone: any) => {
+          const lng = zone.center?.lng ?? zone.center?.[0];
+          const lat = zone.center?.lat ?? zone.center?.[1];
+          if (lng !== undefined && lat !== undefined) {
+            const closestSeaName = getClosestSea(lng, lat);
+            matchedSeas.add(closestSeaName);
           }
-          if (lowerRegion.includes("mediterranean")) {
-            matchedSeas.add("Mediterranean Sea");
-          }
-          if (
-            lowerRegion.includes("atlantic") &&
-            !lowerRegion.includes("north atlantic")
-          ) {
-            matchedSeas.add("European Atlantic Coast");
-          }
+        });
+      }
+
+      if (matchedSeas.size === 0) {
+        const lowerRegion = (sp.region || "").toLowerCase();
+        if (lowerRegion.includes("north sea")) {
+          matchedSeas.add("North Sea");
         }
-
-        if (matchedSeas.size === 0) {
-          matchedSeas.add(SEAS[0].name);
+        if (lowerRegion.includes("mediterranean")) {
+          matchedSeas.add("Mediterranean Sea");
         }
+        if (
+          lowerRegion.includes("atlantic") &&
+          !lowerRegion.includes("north atlantic")
+        ) {
+          matchedSeas.add("European Atlantic Coast");
+        }
+      }
 
-        const matchedSeasArray = Array.from(matchedSeas);
-        const primarySea =
-          SEAS.find((s) => s.name === matchedSeasArray[0]) || SEAS[0];
+      if (matchedSeas.size === 0) {
+        matchedSeas.add(SEAS[0].name);
+      }
 
-        return {
-          id: sp.id,
-          regionNames: matchedSeasArray,
-          commonSpeciesName: sp.common_name,
-          scientificSpeciesName: sp.scientific_name,
-          active: sp.active,
-          zoom: primarySea.zoom,
-          fallbackCenter: primarySea.center as [number, number],
-        };
-      });
+      const matchedSeasArray = Array.from(matchedSeas);
+      const primarySea =
+        SEAS.find((s) => s.name === matchedSeasArray[0]) || SEAS[0];
+
+      return {
+        id: sp.id,
+        regionNames: matchedSeasArray,
+        commonSpeciesName: sp.common_name,
+        scientificSpeciesName: sp.scientific_name,
+        active: sp.active,
+        zoom: primarySea.zoom,
+        fallbackCenter: primarySea.center as [number, number],
+      };
+    });
   }, [rawSpecies, rawZones]);
 
   const zonesData = useMemo(() => {
@@ -176,7 +174,10 @@ export default function MapPage() {
   if (isSpeciesLoading || REGIONS_DATA.length === 0) {
     return (
       <div className="w-screen h-screen flex flex-col items-center justify-center bg-ocean text-white font-cal">
-        <Loader2 className="w-12 h-12 animate-spin mb-4 text-white" />
+        <div className="relative w-18 h-18 flex items-center justify-center mb-8">
+          <div className="wave-ripple"></div>
+          <div className="wave-ripple wave-ripple-delayed"></div>
+        </div>
         <h2 className="text-xl tracking-wider">Loading Marine Data...</h2>
       </div>
     );

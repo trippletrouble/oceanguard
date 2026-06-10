@@ -204,7 +204,6 @@ export default function MapCanvas({
     };
   }, [regionsData]);
 
-  // CAMERA CONTROLLER
   useEffect(() => {
     const map = mapRef.current;
     if (!isMapReady || !map || !zonesData) return;
@@ -216,7 +215,6 @@ export default function MapCanvas({
       )?.zoneData;
       let zones = zonePayload?.zones || [];
 
-      // STRICT CAMERA FILTER: Only frame zones that belong to the active sea
       if (filterSeaIndex !== 0) {
         const activeSeaName = SEAS[filterSeaIndex].name;
         zones = zones.filter((z: any) => {
@@ -283,7 +281,6 @@ export default function MapCanvas({
     filterSeaIndex,
   ]);
 
-  // DRAWING CONTROLLER
   useEffect(() => {
     const map = mapRef.current;
     if (!isMapReady || !map || !zonesData || !trackerData) return;
@@ -315,7 +312,6 @@ export default function MapCanvas({
       );
       const vessels = regionTracker?.vessels || [];
 
-      // STRICT GEOGRAPHIC FILTER: Absolute isolation of zones based on nearest body of water
       if (filterSeaIndex !== 0) {
         const activeSeaName = SEAS[filterSeaIndex].name;
         zonesToRender = zonesToRender.filter((zone: any) => {
@@ -327,7 +323,6 @@ export default function MapCanvas({
         });
       }
 
-      // Track ships that physically intersect our retained zones
       const validShipsForThisRegion = new Set();
 
       zonesToRender.forEach((zone: any) => {
