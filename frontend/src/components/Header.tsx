@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
+
+  const username = user?.email ? user.email.split("@")[0] : "";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -93,12 +97,21 @@ export default function Header() {
             </ul>
           </nav>
           <div className="flex-1 flex justify-end">
-            <Link
-              to="/login"
-              className="transition transform duration-300 hover:scale-150 hover:text-blue-500"
-            >
-              LOGIN
-            </Link>
+            {user ? (
+              <a
+                href={`/user/${username}`}
+                className="transition transform duration-300 hover:scale-120 hover:text-blue-500 font-medium"
+              >
+                PROFILE
+              </a>
+            ) : (
+              <a
+                href="/login"
+                className="transition transform duration-300 hover:scale-120 hover:text-blue-500"
+              >
+                LOGIN
+              </a>
+            )}
           </div>
         </div>
       </header>
