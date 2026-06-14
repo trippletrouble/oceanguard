@@ -44,18 +44,20 @@ async def test_calculate_zones(service):
 
     assert len(occurrences) > 0, "OBIS returned no data for zone calculation"
 
-    zones = service.calculate_zones("thunnus-thynnus", occurrences)
+    zones = await service.calculate_zones("thunnus-thynnus", occurrences)
 
     assert isinstance(zones, dict)
     assert len(zones) > 0, "No monthly zones were created from live OBIS data"
 
-    for month, zone in zones.items():
+    for month, zone_list in zones.items():
         assert 1 <= month <= 12
-        assert "center" in zone
-        assert "lat" in zone["center"]
-        assert "lng" in zone["center"]
-        assert zone["radius_km"] == 200
-        assert zone["sighting_count"] >= 1
+        assert isinstance(zone_list, list)
+        for zone in zone_list:
+            assert "center" in zone
+            assert "lat" in zone["center"]
+            assert "lng" in zone["center"]
+            assert zone["radius_km"] == 200
+            assert zone["sighting_count"] >= 1
 
 
 @pytest.mark.asyncio
@@ -68,10 +70,12 @@ async def test_refresh_zones(service):
     assert isinstance(cached, dict)
     assert len(cached) > 0, "Cache is empty after refresh_zones"
 
-    for month, zone in cached.items():
+    for month, zone_list in cached.items():
         assert 1 <= month <= 12
-        assert zone["radius_km"] == 200
-        assert zone["sighting_count"] >= 1
+        assert isinstance(zone_list, list)
+        for zone in zone_list:
+            assert zone["radius_km"] == 200
+            assert zone["sighting_count"] >= 1
 
 
 def test_get_zones_none_for_unknown_species(service):
