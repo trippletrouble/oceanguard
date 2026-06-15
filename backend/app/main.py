@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.database import init_db, async_session
 from app.models.species import Species
-from app.routers import auth, species, marine, vessels, overlap, alerts, admin
+from app.routers import auth, species, marine, vessels, overlap, alerts, admin, favorites, reports
 from app.services.obis_service import obis_service
 from app.services.ais_service import ais_service
 
@@ -52,9 +52,20 @@ async def lifespan(app: FastAPI):
     await init_db()
     setup_firebase()
     #await seed_database()
-    species_ids = list(obis_service.SPECIES_CONFIG.keys())
-    for species_id in species_ids:
-        await obis_service.refresh_zones(species_id)
+
+    async def preload_obis_caches():
+        try:
+            species_ids = list(obis_service.SPECIES_CONFIG.keys())
+            for species_id in species_ids:
+                try:
+                    await obis_service.refresh_zones(species_id)
+                except Exception as zone_err:
+                    print(f"Skipping OBIS cache for {species_id} due to timeout: {zone_err}")
+            print("OBIS caches preloaded.")
+        except Exception as e:
+            print(f"Error preloading OBIS caches: {e}")
+    
+    asyncio.create_task(preload_obis_caches())
 
     #AIS stream
     asyncio.create_task(ais_service.connect_ais_stream())
@@ -88,6 +99,8 @@ app.include_router(vessels.router, prefix="/vessels", tags=["Vessels"])
 app.include_router(overlap.router, tags=["Overlap Analysis"])
 app.include_router(alerts.router, tags=["Threat Alerts"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(favorites.router, prefix="/favorites", tags=["Favorites"])
+app.include_router(reports.router, prefix="/reports", tags=["Reports"])
 
 
 @app.get("/", tags=["Root"])
