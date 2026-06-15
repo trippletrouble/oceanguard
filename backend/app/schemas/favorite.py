@@ -12,12 +12,12 @@ class FavoriteSpeciesResponse(BaseModel):
         from_attributes = True
 
 class FavoriteRegionCreate(BaseModel):
-    region_name: str
+    name: str
     bbox: list[float] # [min_lat, min_lon, max_lat, max_lon]
 
 class FavoriteRegionResponse(BaseModel):
     id: int
-    region_name: str
+    name: str
     user_id: int
     bbox: list[float]
 

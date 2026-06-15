@@ -71,7 +71,7 @@ async def remove_favorite_species(
 
 # Region Favorites
 
-@router.get("/regions")
+@router.get("/regions", response_model=list[FavoriteRegionResponse])
 async def get_favorite_regions(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -79,7 +79,17 @@ async def get_favorite_regions(
     result = await db.execute(
         select(FavoriteRegion).where(FavoriteRegion.user_id == current_user.id)
     )
-    return result.scalars().all()
+    regions = result.scalars().all()
+    
+    return [
+        {
+            "id": r.id,
+            "user_id": r.user_id,
+            "region_name": r.name,
+            "bbox": r.bbox
+        }
+        for r in regions
+    ]
 
 @router.post("/regions", status_code=201)
 async def add_favorite_region(
@@ -89,7 +99,7 @@ async def add_favorite_region(
 ):
     region = FavoriteRegion(
         user_id=current_user.id,
-        region_name=data.region_name,
+        name=data.name,
         bbox=data.bbox
     )
     db.add(region)
