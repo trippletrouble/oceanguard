@@ -15,7 +15,6 @@ export const fetchMigrationZone = async (speciesId: string, month: number) => {
       params: { month },
     },
   );
-  console.log(response.data);
   return response.data;
 };
 
