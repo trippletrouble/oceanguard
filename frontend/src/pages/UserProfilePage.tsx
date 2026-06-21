@@ -1,24 +1,46 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchAllSpecies } from "../services/api";
+import Header from "../components/Header";
+import SectionHeader from "../components/UserProfile/SectionHeader"
+import ReportPanel from "../components/UserProfile/ReportPanel"
+import { LogOut } from "lucide-react"
 
-export default function LandingPage() {
-  const { data: rawSpecies, isLoading } = useQuery({
-    queryKey: ["all-species"],
-    queryFn: fetchAllSpecies,
-    staleTime: 60 * 60 * 1000,
-  });
+export default function UserProfilePage() {
+  return (
+    <div className="min-h-screen bg-ocean px-6 pb-16 pt-32 font-cal md:px-14">
+      <Header />
 
-  if (!isLoading) {
-    return (
-      <div className="w-screen h-screen flex flex-col items-center justify-center bg-ocean text-white font-cal select-none">
-        <div className="relative w-18 h-18 flex items-center justify-center mb-8">
-          <div className="wave-ripple"></div>
-          <div className="wave-ripple wave-ripple-delayed"></div>
-        </div>
-        <h2 className="text-xl tracking-wider">Loading...</h2>
-      </div>
-    );
-  }
+      <main className="mx-auto flex max-w-7xl flex-col gap-14">
+        <section className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p className="font-cal text-xl uppercase text-black">User</p>
+                <h1 className="mt-4 font-righteous text-6xl text-black md:text-8xl">Username</h1>
+            </div>
 
-  return <></>;
+            <button
+                type="button"
+                onClick={() => (window.location.href = "/login")}
+                className="cursor-pointer flex w-fit items-center gap-5 rounded-[1.25rem] bg-red-400 px-12 py-5 font-medium text-3xl text-black hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            >
+                <LogOut size={34} />
+                Logout
+            </button>
+        </section>
+
+        <SectionHeader />
+
+        <ReportPanel
+          fishName="Sardine"
+          scientificName="scientific name"
+          maxScore="92%"
+          avgScore="48%"  
+        />
+
+        <ReportPanel
+          fishName="Other Fish"
+          scientificName="scientific name"
+          maxScore="--"
+          avgScore="--"
+        />
+      </main>
+    </div>
+  );
 }
