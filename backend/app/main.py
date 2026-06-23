@@ -53,19 +53,9 @@ async def lifespan(app: FastAPI):
     setup_firebase()
     #await seed_database()
 
-    async def preload_obis_caches():
-        try:
-            species_ids = list(obis_service.SPECIES_CONFIG.keys())
-            for species_id in species_ids:
-                try:
-                    await obis_service.refresh_zones(species_id)
-                except Exception as zone_err:
-                    print(f"Skipping OBIS cache for {species_id} due to timeout: {zone_err}")
-            print("OBIS caches preloaded.")
-        except Exception as e:
-            print(f"Error preloading OBIS caches: {e}")
-    
-    asyncio.create_task(preload_obis_caches())
+    species_ids = list(obis_service.SPECIES_CONFIG.keys())
+    for species_id in species_ids:
+        await obis_service.refresh_zones(species_id)
 
     #AIS stream
     asyncio.create_task(ais_service.connect_ais_stream())
