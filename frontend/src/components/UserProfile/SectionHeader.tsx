@@ -9,7 +9,7 @@ export default function SectionHeader() {
 
             <button
                 type="button"
-                onClick={() => (window.location.href = "/")}
+                onClick={() => (window.location.href = "/add-fish")}
                 className="cursor-pointer flex items-center gap-4 rounded-[1.25rem] border border-white/50 bg-white/20 px-10 py-4 font-cal text-3xl text-black backdrop-blur-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
             >
                 <PlusCircle size={36} />

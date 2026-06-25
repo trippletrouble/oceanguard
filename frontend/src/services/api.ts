@@ -43,3 +43,15 @@ export const followHypermediaLink = async (
 
   return response.data;
 };
+
+export const createReport = async (
+  token: ***ENTFERNT***
+  data: { species_id: string; month: number; bbox: number[] },
+) => {
+  const response = await axios.post(`${API_BASE_URL}/reports`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data;
+};

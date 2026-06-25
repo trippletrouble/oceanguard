@@ -11,8 +11,9 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AboutPage from "./pages/AboutPage";
 import Header from "@/components/Header";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import UserProfilePage from "./pages/UserProfilePage";
+import AddFishPage from "./pages/AddFishPage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext.tsx";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/user/:username" element={<UserProfilePage />} />
+                <Route path="/add-fish" element={<AddFishPage />} />
               </Routes>
             </main>
           </div>
