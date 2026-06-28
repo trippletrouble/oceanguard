@@ -4,7 +4,9 @@ import LandingPage from "./pages/LandingPage";
 import MapPage from "./pages/MapPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import AboutPage from "./pages/AboutPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 
 const queryClient = new QueryClient();
 
@@ -19,6 +21,7 @@ function App() {
               <Route path="/map" element={<MapPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/about" element={<AboutPage />} />
             </Routes>
           </main>
         </div>
