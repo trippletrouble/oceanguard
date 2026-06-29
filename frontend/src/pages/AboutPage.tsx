@@ -22,10 +22,10 @@ export default function AboutPage() {
             <section id="mission">
                 <h2>Our Mission</h2>
                 <p>
-                    We aim to to protect fish populations during their migration routes through data-driven solutions. 
-                    Using our intuitive map, users will be shown real life data about possible vessels that can provide a threat to a certain area.
-                    Ilegal fishing is a major threat and difficult to track, but with data we can approximate which vessels are likely to be fishing
-                    ilegally in migration zones.
+                    We aim to protect fish populations during their migration routes through data-driven solutions.
+                    Using our intuitive map, users will be shown real life data about possible vessels that can pose a threat to a certain area.
+                    Illegal fishing is a major threat and difficult to track, but with data we can approximate which vessels are likely to be fishing
+                    illegally in migration zones.
                 </p>
 
             </section>
@@ -36,18 +36,18 @@ export default function AboutPage() {
 
                 <h3>OBIS API</h3>
                 <p>
-                    From Ocean Biodiversity Information System we gather different sightings during time.
+                    From Ocean Biodiversity Information System API we gather different sightings over time.
                     Creating different seasonal distribution zones, that will be contrasted with current temperature data
                     to determine if the zone is a current migration zone or not.
                 </p>
                 <h3>OpenMeteo Marine API</h3>
                 <p>
-                    From OpenMeteo Marine we gather current temperature data and weather forecasts for the ocean.
+                    From OpenMeteo Marine API we gather current temperature data and weather forecasts for the ocean.
                     This information is crucial for understanding the environmental conditions that influence fish migration patterns.
                 </p>
                 <h3>AISstream websocket API</h3>
                 <p>
-                    From AISstream we obtain live vessel position and information. With this information we can determine a vessel speed,
+                    From AISstream websocket API we obtain live vessel position and information. With this information we can determine a vessel speed,
                     and with this approximate if the vessel is in transit or likely fishing.
                 </p>
             </section>
@@ -86,7 +86,7 @@ export default function AboutPage() {
                         <tr>
                             <td>T</td>
                             <td><InlineMath math="\max\left(0,\; 1 - \frac{|T_{now} - T_{preferred}|}{R}\right)" /></td>
-                            <td>Temperature factor.The closer the actual temperature is to the preferred temperature for a specific fish species, the higher the score.</td>
+                            <td>Temperature factor. The closer the actual temperature is to the preferred temperature for a specific fish species, the higher the score.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -98,7 +98,7 @@ export default function AboutPage() {
                 <p>
                     We are a diverse team of software engineers and marine enthusiasts ready to contribute to ocean conservation efforts.
                     5 students from the University of Hof, Computer Science program. We put our knowledge of data and APIs to good use,
-                    creating an useful tool to help the world.
+                    creating a useful tool to help the world.
                 </p>
             </section>
             <section id="contact">
