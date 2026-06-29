@@ -25,6 +25,28 @@
   }
 }
 
+.reveal-frame {
+  overflow: hidden;
+  position: relative;
+  display: block;
+}
+
+.reveal-element {
+  display: block;
+  transform: translateY(105%);
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-active .reveal-element {
+  transform: translateY(0%);
+}
+
+.logo-brand-tint {
+  /* Targets #003a95 */
+  filter: brightness(0) saturate(100%) invert(14%) sepia(95%) saturate(3034%)
+    hue-rotate(212deg) brightness(93%) contrast(105%);
+}
+
 @keyframes oceanFloat {
   0%,
   100% {
@@ -101,7 +123,7 @@
 }
 
 .glass-card-compact {
-    min-height: auto;
+  min-height: auto;
   transition: all 0.5s ease;
   position: relative;
   background: linear-gradient(
