@@ -55,3 +55,13 @@ export const createReport = async (
   });
   return response.data;
 };
+
+export const fetchReports = async (token: string) => {
+  const response = await axios.get(`${API_BASE_URL}/reports`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
+};

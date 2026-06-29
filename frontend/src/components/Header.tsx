@@ -8,8 +8,6 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
 
-  const username = user?.email ? user.email.split("@")[0] : "";
-
   useEffect(() => {
     const handleScroll = () => {
       const threshold = 800;
@@ -99,7 +97,7 @@ export default function Header() {
           <div className="flex-1 flex justify-end">
             {user ? (
               <a
-                href={`/user/${username}`}
+                href={`/user`}
                 className="transition transform duration-300 hover:scale-120 hover:text-blue-500 font-medium"
               >
                 PROFILE

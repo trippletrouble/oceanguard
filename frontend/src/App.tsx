@@ -42,7 +42,7 @@ export default function App() {
                 <Route path="/map" element={<MapPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/user/:username" element={<UserProfilePage />} />
+                <Route path="/user" element={<UserProfilePage />} />
                 <Route path="/add-fish" element={<AddFishPage />} />
               </Routes>
             </main>

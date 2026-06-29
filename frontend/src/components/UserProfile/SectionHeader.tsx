@@ -4,7 +4,7 @@ export default function SectionHeader() {
     return (
         <section className="flex items-center justify-between">
             <h2 className="font-righteous text-6xl text-black md:text-8xl">
-                Report
+                Reports
             </h2>
 
             <button
