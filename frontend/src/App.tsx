@@ -11,7 +11,10 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AboutPage from "./pages/AboutPage";
 import Header from "@/components/Header";
+import UserProfilePage from "./pages/UserProfilePage";
+import AddFishPage from "./pages/AddFishPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "./context/AuthContext.tsx";
 
 const queryClient = new QueryClient();
 
@@ -27,20 +30,25 @@ function PageLayoutWithHeader() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="w-full min-h-screen">
-          <Routes>
-            <Route element={<PageLayoutWithHeader />}>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/about" element={<AboutPage />} />
-            </Route>
-
-            <Route path="/map" element={<MapPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-          </Routes>
-        </div>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <div className="w-full min-h-screen">
+            <main>
+              <Routes>
+                <Route element={<PageLayoutWithHeader />}>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                </Route>
+                <Route path="/map" element={<MapPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/user" element={<UserProfilePage />} />
+                <Route path="/add-fish" element={<AddFishPage />} />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

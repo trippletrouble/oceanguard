@@ -43,3 +43,35 @@ export const followHypermediaLink = async (
 
   return response.data;
 };
+
+export const createReport = async (
+  token: ***ENTFERNT***
+  data: { species_id: string; month: number; bbox: number[] },
+) => {
+  const response = await axios.post(`${API_BASE_URL}/reports`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data;
+};
+
+export const fetchReports = async (token: string) => {
+  const response = await axios.get(`${API_BASE_URL}/reports`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
+};
+
+export const deleteReport = async (token: string, reportId: number) => {
+  const response = await axios.delete(`${API_BASE_URL}/reports/${reportId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
+};
