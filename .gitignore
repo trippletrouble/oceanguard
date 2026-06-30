@@ -20,3 +20,5 @@ backend/reset_species.py
 
 backend/app/oceanguard.db
 backend/app/firebase-service-account.json
+# CocoIndex Code (ccc)
+/.cocoindex_code/

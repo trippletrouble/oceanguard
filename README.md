@@ -37,13 +37,19 @@ $$Faktor = \max\left(0,\; 1 - \frac{Wert}{Schwelle}\right)$$
 
 ### D – Distanz-Faktor
 
-$$D = \max\left(0,\; 1 - \frac{d}{100}\right)$$
+$$D = \max\left(0,\; 1 - \frac{d}{Radius_{Art}}\right)$$
 
-| Entfernung | D | Bedeutung |
+Der Schwellenwert ($Radius_{Art}$) hängt von der jeweiligen Fischart ab:
+* Roter Thun: 200 km
+* Atlantischer Kabeljau: 100 km
+* Sardine: 50 km
+* Schwertfisch: 150 km
+
+| Entfernung (z. B. Kabeljau mit $Radius = 100\text{ km}$) | D | Bedeutung |
 |---|---|---|
-| 0 km (in der Zone) | 1.0 | Maximale Bedrohung |
-| 50 km | 0.5 | Mittel |
-| 100+ km | 0.0 | Keine Bedrohung → **gesamter Score = 0** |
+| 0 km (im Zentrum) | 1.0 | Maximale Bedrohung |
+| $Radius \times 0.5$ (z. B. 50 km) | 0.5 | Mittel |
+| $\ge Radius$ (z. B. 100+ km) | 0.0 | Keine Bedrohung → **gesamter Score = 0** |
 
 Distanz berechnet via **Haversine-Formel**.
 
@@ -80,12 +86,12 @@ Prüft, ob Fische wahrscheinlich anwesend sind – basierend auf der aktuellen M
 
 | Endpoint | Beschreibung |
 |---|---|
-| `GET /api/species` | Liste aller unterstützten Arten |
-| `GET /api/species/{id}/migration?month=` | Saisonale Verbreitungszone (GeoJSON) |
-| `GET /api/vessels?bbox=&type=fishing` | Fischereifahrzeuge in einer Region |
-| `GET /api/overlap?species=&month=&bbox=` | **Kern:** Overlap-Score Berechnung |
-| `GET /api/marine-conditions?lat=&lng=` | Meeresbedingungen an einem Punkt |
-| `GET /api/alerts?species=&bbox=` | Aktive Warnungen |
+| `GET /species/` | Liste aller unterstützten, aktiven Arten |
+| `GET /species/{species_id}/migration?month=` | Saisonale Verbreitungszone (GeoJSON) |
+| `GET /vessels` | Aktive Schiffspositionen (ohne Filter) |
+| `GET /overlap?species_id=&month=` | **Kern:** Overlap-Score Berechnung für eine Fischart |
+| `GET /marine-conditions?lat=&lng=` | Meeresbedingungen an einem Koordinatenpunkt |
+| `GET /alerts?species_id=` | Aktive Warnungen für eine Fischart |
 
 ---
 
@@ -94,7 +100,7 @@ Prüft, ob Fische wahrscheinlich anwesend sind – basierend auf der aktuellen M
 | Art | Wissenschaftl. Name | Region | Opt. Temp. | IUCN-Status |
 |---|---|---|---|---|
 | 🐟 Roter Thun | *Thunnus thynnus* | Mittelmeer / Ostatlantik | 15–25°C | Nicht gefährdet |
-| 🐟 Atlantischer Kabeljau | *Gadus morhua* | Nordsee / Nordatlantik | 2–10°C | Gefährdet |
+| 🐟 Atlantischer Kabeljau | *Gadus morhua* | Nordsee / Nordatlantik | 0–12°C | Gefährdet |
 | 🐟 Sardine | *Sardina pilchardus* | Europ. Atlantikküste | 10–20°C | Nicht gefährdet |
 | 🐟 Schwertfisch | *Xiphias gladius* | Mittelmeer / Atlantik | 18–28°C | Potenziell gefährdet |
 
@@ -105,8 +111,8 @@ Prüft, ob Fische wahrscheinlich anwesend sind – basierend auf der aktuellen M
 ## Tech-Stack
 
 - **Backend:** REST Web Service, konsumiert alle drei externen APIs
-- **Frontend:** Kartenbasierte UI mit Leaflet.js
-- **Echtzeit:** WebSocket (AISstream → Backend → Frontend via REST)
+- **Frontend:** Kartenbasierte UI mit MapTiler SDK
+- **Echtzeit:** WebSocket (AISstream → Backend → Frontend via REST-Polling)
 - **Datenformat:** Durchgehend JSON
 
 ---

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class FavoriteSpeciesCreate(BaseModel):
     species_id: str
@@ -8,8 +8,7 @@ class FavoriteSpeciesResponse(BaseModel):
     species_id: str
     user_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class FavoriteRegionCreate(BaseModel):
     name: str
@@ -21,5 +20,4 @@ class FavoriteRegionResponse(BaseModel):
     user_id: int
     bbox: list[float]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -18,8 +18,29 @@ router = APIRouter()
         400: {"description": "Ungültige BBox"}
     }
 )
-async def get_vessels():
+async def get_vessels(
+    bbox: str | None = Query(None, description="BBox boundaries: min_lat,min_lng,max_lat,max_lng")
+):
     vessels = ais_service.get_all_vessels()
+    
+    if bbox:
+        try:
+            parts = [float(p.strip()) for p in bbox.split(",")]
+            if len(parts) != 4:
+                raise ValueError()
+            min_lat, min_lng, max_lat, max_lng = parts
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid bbox format. Use min_lat,min_lng,max_lat,max_lng"
+            )
+            
+        vessels = [
+            v for v in vessels
+            if v.get("lat") is not None and v.get("lng") is not None and
+            min_lat <= v["lat"] <= max_lat and min_lng <= v["lng"] <= max_lng
+        ]
+
     return {
         "vessels": vessels,
         "count": len(vessels)

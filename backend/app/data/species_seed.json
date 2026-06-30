@@ -30,7 +30,7 @@
   {
     "id": "sardina-pilchardus",
     "common_name": "European Sardine",
-    "description": "Swordfish are vital indicators of ocean health, migrating vast distances and connecting different marine zones. They are heavily targeted by longline fisheries; because they are slow to mature and often caught as 'bycatch' before they can spawn, their populations are struggling to stay ahead of industrial demand.",
+    "description": "The foundation of the East Atlantic food chain, Sardines convert plankton into energy for whales, seabirds, and larger fish. They are frequently overfished for 'fishmeal' and oil; since their schools are highly predictable based on water temperature, they are extremely vulnerable to efficient, high-volume industrial fleets.",
     "scientific_name": "Sardina pilchardus",
     "region": "European Atlantic Coast / Mediterranean",
     "temp_min": 10.0,
@@ -44,7 +44,7 @@
   {
     "id": "xiphias-gladius",
     "common_name": "Swordfish",
-    "description": "The foundation of the East Atlantic food chain, Sardines convert plankton into energy for whales, seabirds, and larger fish. They are frequently overfished for 'fishmeal' and oil; since their schools are highly predictable based on water temperature, they are extremely vulnerable to efficient, high-volume industrial fleets.",
+    "description": "Swordfish are vital indicators of ocean health, migrating vast distances and connecting different marine zones. They are heavily targeted by longline fisheries; because they are slow to mature and often caught as 'bycatch' before they can spawn, their populations are struggling to stay ahead of industrial demand.",
     "scientific_name": "Xiphias gladius",
     "region": "Mediterranean / Atlantic",
     "temp_min": 18.0,

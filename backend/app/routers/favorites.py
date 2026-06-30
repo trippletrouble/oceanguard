@@ -79,19 +79,9 @@ async def get_favorite_regions(
     result = await db.execute(
         select(FavoriteRegion).where(FavoriteRegion.user_id == current_user.id)
     )
-    regions = result.scalars().all()
-    
-    return [
-        {
-            "id": r.id,
-            "user_id": r.user_id,
-            "region_name": r.name,
-            "bbox": r.bbox
-        }
-        for r in regions
-    ]
+    return result.scalars().all()
 
-@router.post("/regions", status_code=201)
+@router.post("/regions", status_code=201, response_model=FavoriteRegionResponse)
 async def add_favorite_region(
     data: FavoriteRegionCreate,
     current_user: User = Depends(get_current_user),

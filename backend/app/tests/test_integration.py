@@ -293,3 +293,54 @@ async def test_species_create_invalid_temp(client, mock_firebase_admin, db_sessi
     }
     response = await client.post("/species/", headers=AUTH_HEADER, json=payload)
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_vessels_with_bbox(client):
+    mock_vessels = [
+        {"mmsi": 111, "name": "Vessel A", "lat": 35.0, "lng": 15.0, "sog": 2.0},
+        {"mmsi": 222, "name": "Vessel B", "lat": 45.0, "lng": 25.0, "sog": 3.0},
+        {"mmsi": 333, "name": "Vessel C", "lat": 55.0, "lng": 35.0, "sog": 4.0},
+    ]
+
+    with patch("app.services.ais_service.ais_service.get_all_vessels", return_value=mock_vessels):
+        # 1. Test standard response (all vessels)
+        res_all = await client.get("/vessels")
+        assert res_all.status_code == 200
+        assert res_all.json()["count"] == 3
+
+        # 2. Test bbox filtering (should only match A and B)
+        res_filtered = await client.get("/vessels?bbox=30.0,10.0,50.0,30.0")
+        assert res_filtered.status_code == 200
+        assert res_filtered.json()["count"] == 2
+        mmsis = [v["mmsi"] for v in res_filtered.json()["vessels"]]
+        assert 111 in mmsis
+        assert 222 in mmsis
+
+        # 3. Test invalid bbox format
+        res_invalid = await client.get("/vessels?bbox=invalid")
+        assert res_invalid.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_favorite_regions_crud(client, mock_firebase_admin):
+    # 1. Sync user
+    sync_res = await client.post("/auth/sync", headers=AUTH_HEADER, json={"name": "Test User"})
+    assert sync_res.status_code == 201
+
+    # 2. Add a favorite region
+    payload = {"name": "Test Region", "bbox": [35.0, 10.0, 45.0, 20.0]}
+    res_post = await client.post("/favorites/regions", headers=AUTH_HEADER, json=payload)
+    assert res_post.status_code == 201
+    data_post = res_post.json()
+    assert data_post["name"] == "Test Region"
+    assert data_post["bbox"] == [35.0, 10.0, 45.0, 20.0]
+
+    # 3. Get favorite regions (verifies name serialization works)
+    res_get = await client.get("/favorites/regions", headers=AUTH_HEADER)
+    assert res_get.status_code == 200
+    data_get = res_get.json()
+    assert len(data_get) >= 1
+    assert data_get[0]["name"] == "Test Region"
+    assert data_get[0]["bbox"] == [35.0, 10.0, 45.0, 20.0]
+
