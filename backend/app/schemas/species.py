@@ -1,5 +1,11 @@
 from datetime import datetime
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
+
+
+class Link(BaseModel):
+    href: str
+    method: str = "GET"
 
 
 class SpeciesBase(BaseModel):
@@ -42,6 +48,8 @@ class SpeciesResponse(SpeciesBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    links: dict[str, Link] | None = Field(default=None, alias="_links")
 
     class Config:
         from_attributes = True
+
