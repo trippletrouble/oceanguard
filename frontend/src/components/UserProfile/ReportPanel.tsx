@@ -1,3 +1,5 @@
+import { Trash2 } from "lucide-react"
+
 type TrackedVessel = {
     mmsi: string;
     vessel_name: string;
@@ -25,6 +27,7 @@ export type UserReport = {
 
 type ReportPanelProps = {
     report: UserReport;
+    onDelete: (reportId: number) => void;
 };
 
 function formatPercent(score?: number | null) {
@@ -56,7 +59,7 @@ function ScoreBox({
     );
 }
 
-export default function ReportPanel({ report }: ReportPanelProps) {
+export default function ReportPanel({ report, onDelete }: ReportPanelProps) {
     const vessels = report.snapshot.tracked_vessels ?? [];
 
     return (
@@ -87,6 +90,14 @@ export default function ReportPanel({ report }: ReportPanelProps) {
                         value={formatPercent(report.avg_score)}
                         color="text-yellow-600"
                     />
+                    <button 
+                        type="button"
+                        onClick={() => onDelete(report.id)}
+                        aria-label="{`Delete report ${report.id}`}"
+                        className="flex w-28 cursor-pointer items-center justify-center rounded-[1.25rem] border border-white/40 bg-red-400/80 text-black shadow-md backdrop-blur-md transition-all duration-300 hover:scale-[1.03] hover:bg-red-500 active:scale-[0.97]"
+                    >
+                        <Trash2 size={42}/>
+                    </button>
                 </div>
             </div>
 
@@ -110,7 +121,7 @@ export default function ReportPanel({ report }: ReportPanelProps) {
                 <p>Overlap Score</p>
             </div>
 
-            <div className="mt-5 flex flex-col gap-4">
+            <div className="mt-5 flex max-h-80 flex-col gap-4 overflow-y-scroll pr-2">
                 {vessels.map((vessel) => (
                     <div
                         key={`${report.id}-${vessel.mmsi}`}
@@ -123,6 +134,12 @@ export default function ReportPanel({ report }: ReportPanelProps) {
                     </div>
                 ))}
             </div>
+
+            {vessels.length > 5 && (
+                    <p className="mt-4 text-sm text-blue-950/70">
+                        Scroll to view all vessels
+                    </p>
+                )}
         </section>
     );
 }

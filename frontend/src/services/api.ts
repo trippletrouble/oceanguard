@@ -65,3 +65,13 @@ export const fetchReports = async (token: string) => {
 
   return response.data;
 };
+
+export const deleteReport = async (token: string, reportId: number) => {
+  const response = await axios.delete(`${API_BASE_URL}/reports/${reportId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
+};

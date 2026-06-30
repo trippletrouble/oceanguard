@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchAllSpecies, fetchMigrationZone, createReport } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
+import AddFishRegionsMap from "../components/Map/AddFishRegionsMap";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronDown, CheckCircle2, X } from "lucide-react";
 import { getClosestSea, SEAS } from "../types/map";
@@ -18,7 +19,17 @@ interface SpeciesProps {
 
 interface ZonePayload {
   speciesId: string;
-  zoneData: any;
+  zoneData?: {
+    zones?: MigrationZone[];
+  };
+}
+
+interface MigrationZone {
+  center?: {
+    lng?: number;
+    lat?: number;
+  } | [number, number];
+  radius_km?: number;
 }
 
 interface ResolvedRegion {
@@ -59,6 +70,7 @@ export default function AddFishPage() {
 
   // Keyed by species ID, value is the index of selected region option
   const [selectedRegionIndex, setSelectedRegionIndex] = useState<Record<string, number>>({});
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState("");
   const [banner, setBanner] = useState<BannerState | null>(null);
   const [submittingSpeciesId, setSubmittingSpeciesId] = useState<string | null>(null);
 
@@ -97,9 +109,9 @@ export default function AddFishPage() {
       const zones = matchedZonePayload?.zones || [];
 
       if (zones.length > 0) {
-        zones.forEach((zone: any) => {
-          const lng = zone.center?.lng ?? zone.center?.[0];
-          const lat = zone.center?.lat ?? zone.center?.[1];
+        zones.forEach((zone) => {
+          const lng = Array.isArray(zone.center) ? zone.center[0] : zone.center?.lng;
+          const lat = Array.isArray(zone.center) ? zone.center[1] : zone.center?.lat;
 
           if (lng !== undefined && lat !== undefined) {
             const radiusKm = zone.radius_km || 100;
@@ -156,6 +168,28 @@ export default function AddFishPage() {
     return resultMap;
   }, [rawSpecies, rawZones]);
 
+  const activeSpecies = useMemo(
+    () => (rawSpecies ? rawSpecies.filter((sp) => sp.active !== false) : []),
+    [rawSpecies],
+  );
+
+  const selectedFish =
+    activeSpecies.find((fish) => fish.id === selectedSpeciesId) || activeSpecies[0];
+  const selectedFishRegionIndex = selectedFish ? selectedRegionIndex[selectedFish.id] || 0 : 0;
+  const selectedFishRegions = selectedFish ? speciesRegionsMap[selectedFish.id] || [] : [];
+  const selectedFishRegion = selectedFishRegions[selectedFishRegionIndex];
+  const selectedFishNames = selectedFish
+    ? getCleanedFishNames(selectedFish.common_name)
+    : { displayName: "", imgSlug: "fallback-fish" };
+
+  useEffect(() => {
+    if (activeSpecies.length === 0) return;
+    const selectedStillExists = activeSpecies.some((fish) => fish.id === selectedSpeciesId);
+    if (!selectedStillExists) {
+      setSelectedSpeciesId(activeSpecies[0].id);
+    }
+  }, [activeSpecies, selectedSpeciesId]);
+
   // Automatically dismiss the success banner after 4 seconds
   useEffect(() => {
     if (banner) {
@@ -177,8 +211,6 @@ export default function AddFishPage() {
       </div>
     );
   }
-
-  const activeSpecies = rawSpecies ? rawSpecies.filter((sp) => sp.active !== false) : [];
 
   const handleRegionChange = (speciesId: string, index: number) => {
     setSelectedRegionIndex((prev) => ({
@@ -270,88 +302,112 @@ export default function AddFishPage() {
           </div>
         </section>
 
-        {/* Dynamic Fish Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 lg:gap-18 mt-16">
-          {activeSpecies.map((fish) => {
-            const { displayName, imgSlug } = getCleanedFishNames(fish.common_name);
-            const resolvedOptions = speciesRegionsMap[fish.id] || [];
-            const selectedIdx = selectedRegionIndex[fish.id] || 0;
+        <section className="w-full">
+          <AddFishRegionsMap
+            species={activeSpecies}
+            zonesData={rawZones}
+            speciesRegionsMap={speciesRegionsMap}
+            selectedSpeciesId={selectedFish?.id || ""}
+            selectedRegionIndex={selectedFishRegionIndex}
+          />
+        </section>
 
-            return (
-              <div
-                key={fish.id}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/10 flex flex-col items-center justify-between text-center transition-all duration-500 hover:scale-[1.01] hover:border-white/20 shadow-xl"
-              >
-                {/* Image Section */}
-                <div className="relative w-full h-48 flex justify-center items-center -mt-24 select-none pointer-events-none">
+        <section className="glass-card rounded-[2rem] border border-white/10 p-6 shadow-xl md:p-8">
+          {selectedFish && (
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] md:items-center">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-full w-full max-w-xl items-center justify-center select-none pointer-events-none md:h-56">
                   <img
-                    src={`/fishes/${imgSlug}.png`}
-                    alt={fish.common_name}
-                    className="w-full h-full object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.3)] transition-transform duration-500 hover:scale-105"
+                    src={`/fishes/${selectedFishNames.imgSlug}.png`}
+                    alt={selectedFish.common_name}
+                    className="h-full w-full object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.3)]"
                   />
                 </div>
+                <div className="mt-4 flex flex-col gap-1">
+                  <h3 className="font-righteous text-4xl uppercase tracking-tight text-white md:text-5xl">
+                    {selectedFishNames.displayName}
+                  </h3>
+                  <p className="text-sky-200/90 text-sm font-medium italic">
+                    ({selectedFish.scientific_name})
+                  </p>
+                </div>
+              </div>
 
-                {/* Details Section */}
-                <div className="flex flex-col gap-4 mt-6 w-full flex-grow">
-                  <div>
-                    <h3 className="font-righteous text-3xl uppercase tracking-tight text-white md:text-4xl">
-                      {displayName}
-                    </h3>
-                    <p className="text-sky-200/90 text-sm font-medium italic mt-1">
-                      ({fish.scientific_name})
-                    </p>
-                  </div>
-
-                  {/* Dropdown selection populated dynamically with Resolved regions & bounding boxes */}
-                  <div className="flex flex-col gap-2 w-full max-w-xs mx-auto text-left mt-3">
-                    <label className="text-[12px] uppercase tracking-wider text-slate-300 font-semibold pl-1">
-                      Select Bounding Box Region
-                    </label>
-                    <div className="relative w-full">
-                      <select
-                        value={selectedIdx}
-                        onChange={(e) => handleRegionChange(fish.id, Number(e.target.value))}
-                        className="w-full py-3.5 pl-5 pr-12 border border-white/20 rounded-2xl text-[15px] outline-none cursor-pointer bg-slate-900/80 hover:bg-slate-900/90 text-white font-medium appearance-none transition-all duration-300 focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10"
-                      >
-                        {resolvedOptions.map((option, idx) => (
-                          <option key={idx} value={idx}>
-                            {option.name}
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2 text-left">
+                  <label className="text-[12px] uppercase tracking-wider text-slate-300 font-semibold pl-1">
+                    Choose Fish
+                  </label>
+                  <div className="relative w-full">
+                    <select
+                      value={selectedFish.id}
+                      onChange={(e) => setSelectedSpeciesId(e.target.value)}
+                      className="w-full py-3.5 pl-5 pr-12 border border-white/20 rounded-2xl text-[15px] outline-none cursor-pointer bg-slate-900/80 hover:bg-slate-900/90 text-white font-medium appearance-none transition-all duration-300 focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10"
+                    >
+                      {activeSpecies.map((fish) => {
+                        const { displayName } = getCleanedFishNames(fish.common_name);
+                        return (
+                          <option key={fish.id} value={fish.id}>
+                            {displayName}
                           </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={18}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"
-                      />
-                    </div>
-
-                    {/* Tiny visual representation of the currently selected BBox coordinates */}
-                    {resolvedOptions[selectedIdx] && (
-                      <div className="text-[10px] font-mono text-slate-400 mt-1 pl-1">
-                        BBox: [{resolvedOptions[selectedIdx].bbox.join(", ")}]
-                      </div>
-                    )}
+                        );
+                      })}
+                    </select>
+                    <ChevronDown
+                      size={18}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"
+                    />
                   </div>
                 </div>
 
-                {/* Action button */}
+                <div className="flex flex-col gap-2 text-left">
+                  <label className="text-[12px] uppercase tracking-wider text-slate-300 font-semibold pl-1">
+                    Choose Region
+                  </label>
+                  <div className="relative w-full">
+                    <select
+                      value={selectedFishRegionIndex}
+                      onChange={(e) => handleRegionChange(selectedFish.id, Number(e.target.value))}
+                      className="w-full py-3.5 pl-5 pr-12 border border-white/20 rounded-2xl text-[15px] outline-none cursor-pointer bg-slate-900/80 hover:bg-slate-900/90 text-white font-medium appearance-none transition-all duration-300 focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10"
+                    >
+                      {selectedFishRegions.map((option, idx) => (
+                        <option key={`${option.name}-${idx}`} value={idx}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={18}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"
+                    />
+                  </div>
+
+                  {selectedFishRegion && (
+                    <div className="text-[11px] font-mono text-slate-300 mt-1 rounded-xl border border-white/10 bg-slate-950/35 px-3 py-2">
+                      BBox: [{selectedFishRegion.bbox.join(", ")}]
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="button"
-                  disabled={submittingSpeciesId !== null}
-                  onClick={() => handleMonitorSpecies(fish.id, displayName)}
-                  className={`font-righteous text-md uppercase tracking-wider rounded-[1.25rem] w-full max-w-xs py-3.5 mt-8 border border-white/40 bg-white/10 transition-all duration-300 shadow-md ${
-                    submittingSpeciesId === fish.id
+                  disabled={submittingSpeciesId !== null || !selectedFishRegion}
+                  onClick={() =>
+                    handleMonitorSpecies(selectedFish.id, selectedFishNames.displayName)
+                  }
+                  className={`font-righteous text-md uppercase tracking-wider rounded-[1.25rem] w-full py-3.5 border border-white/40 bg-white/10 transition-all duration-300 shadow-md ${
+                    submittingSpeciesId === selectedFish.id
                       ? "opacity-60 cursor-not-allowed"
-                      : submittingSpeciesId !== null
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer hover:bg-white hover:text-slate-900 active:scale-[0.98]"
+                      : submittingSpeciesId !== null || !selectedFishRegion
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer hover:bg-white hover:text-slate-900 active:scale-[0.98]"
                   }`}
                 >
-                  {submittingSpeciesId === fish.id ? "Activating..." : "Monitor Species"}
+                  {submittingSpeciesId === selectedFish.id ? "Activating..." : "Monitor Species"}
                 </button>
               </div>
-            );
-          })}
+            </div>
+          )}
         </section>
       </main>
     </div>

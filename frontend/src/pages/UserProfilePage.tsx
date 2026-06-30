@@ -6,8 +6,8 @@ import { useNavigate } from "react-router-dom"
 import { signOut } from "firebase/auth"
 import { auth } from "../services/firebase"
 import { useAuth} from "../context/AuthContext"
-import { useQuery } from "@tanstack/react-query";
-import { fetchReports } from "../services/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchReports, deleteReport } from "../services/api";
 
 export default function UserProfilePage() {
 
@@ -16,6 +16,19 @@ export default function UserProfilePage() {
   const { user, token, loading } = useAuth();
 
   const username = user?.displayName || user?.email?.split("@")[0] || "Username";
+
+  const queryClient = useQueryClient();
+
+  const deleteReportMutation = useMutation({
+    mutationFn: (reportId: number) => deleteReport(token!, reportId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
+  });
+
+  const handleDeleteReport = (reportId: number) => {
+    deleteReportMutation.mutate(reportId);
+  };
 
   const { data: reports = [], isLoading } = useQuery<UserReport[]>({
     queryKey: ["reports"],
@@ -68,7 +81,7 @@ export default function UserProfilePage() {
           </section>
         ) : (
           reports.map((report) => (
-            <ReportPanel key={report.id} report={report} />
+            <ReportPanel key={report.id} report={report} onDelete={handleDeleteReport}/>
           ))
         )}
       </main>
