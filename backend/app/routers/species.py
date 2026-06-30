@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,6 @@ from app.models.species import Species
 from app.models.user import User
 from app.schemas.species import (
     Link,
-    Request,
     SpeciesCreate,
     SpeciesPatch,
     SpeciesResponse,
@@ -307,4 +306,3 @@ async def delete_species(
     species.updated_at = datetime.now()
     await db.commit()
     # Kein return bei 204
-
