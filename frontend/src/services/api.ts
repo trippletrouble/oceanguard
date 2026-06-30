@@ -1,28 +1,20 @@
 import axios from "axios";
+import type { HateoasLink } from "@/types/species";
 
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
-export const fetchAllSpecies = async () => {
-  const response = await axios.get(`${API_BASE_URL}/species/`);
-  return response.data;
-};
-
-export const fetchMigrationZone = async (speciesId: string, month: number) => {
-  const response = await axios.get(
-    `${API_BASE_URL}/species/${speciesId}/migration`,
-    {
-      params: { month },
+export const fetchApiRoot = async () => {
+  return {
+    links: {
+      species_catalog: { href: "/species/", method: "GET" } as HateoasLink,
     },
-  );
-  return response.data;
+  };
 };
 
-export const fetchVesselOverlaps = async (speciesId: string, month: number) => {
-  const response = await axios.get(
-    `${API_BASE_URL}/overlap?species_id=${speciesId}&month=${month}`,
-  );
-  return response.data;
+export const fetchAllSpecies = async () => {
+  const root = await fetchApiRoot();
+  return await followHypermediaLink(root.links.species_catalog);
 };
 
 export const syncUser = async (token: string, name: string) => {
@@ -35,5 +27,19 @@ export const syncUser = async (token: string, name: string) => {
       },
     },
   );
+  return response.data;
+};
+
+export const followHypermediaLink = async (
+  link: HateoasLink,
+  customParams?: Record<string, any>,
+) => {
+  const response = await axios({
+    method: link.method || "GET",
+    baseURL: API_BASE_URL,
+    url: link.href,
+    params: customParams,
+  });
+
   return response.data;
 };

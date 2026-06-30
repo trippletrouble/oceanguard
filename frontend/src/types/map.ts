@@ -1,3 +1,5 @@
+import type { Species } from "./species";
+
 export interface Vessel {
   mmsi: number;
   name: string;
@@ -15,6 +17,7 @@ export interface RegionData {
   active: boolean;
   zoom: number;
   fallbackCenter: [number, number];
+  links?: Species["links"];
 }
 
 export const SEAS = [

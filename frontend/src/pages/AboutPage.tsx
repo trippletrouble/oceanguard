@@ -1,4 +1,3 @@
-import Header from "@/components/Header";
 import Section from "@/components/AboutPage/Section";
 import AnimatedText from "@/components/AboutPage/AnimatedText";
 import { BlockMath, InlineMath } from "react-katex";
@@ -15,9 +14,8 @@ export default function AboutPage() {
 
   return (
     <>
-      <Header />
-      <main className="w-full flex flex-col gap-24 overflow-x-hidden pt-44 pb-32">
-        <section className="w-full max-w-5xl mx-auto px-4 md:px-0">
+      <main className="w-full flex flex-col gap-24 overflow-x-hidden pb-32">
+        <section className="w-full max-w-5xl mx-auto pt-48 px-4 md:px-0">
           <div className="w-full flex flex-col items-center">
             <div className="w-full glass-card p-4 min-h-fit! rounded-4xl flex flex-wrap items-center justify-center">
               {jumpLinks.map((link, idx) => (
@@ -199,4 +197,3 @@ export default function AboutPage() {
     </>
   );
 }
-

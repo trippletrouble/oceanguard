@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllSpecies } from "../services/api";
-import Header from "@/components/Header";
+import { fetchAllSpecies } from "@/services/api";
 import LandingInfoBox from "@/components/LandingInfoBox";
 import { Fishes } from "@/components/Fishes";
 
@@ -25,7 +24,6 @@ export default function LandingPage() {
 
   return (
     <>
-      <Header />
       <main className="w-full flex flex-col gap-12 overflow-x-hidden">
         <section className="w-full flex flex-col gap-4 justify-center items-center text-center max-w-xl mx-auto pt-48">
           <h1 className="title uppercase font-righteous tracking-tighter animate-float-heading">
