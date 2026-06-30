@@ -1,23 +1,17 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import require_role
+from app.auth.dependencies import get_current_user, require_role
 from app.database import get_db
 from app.models.species import Species
 from app.models.user import User
-from app.schemas.species import (
-    Link,
-    SpeciesCreate,
-    SpeciesPatch,
-    SpeciesResponse,
-)
+from app.schemas.species import SpeciesCreate, SpeciesPatch
 from app.services.obis_service import obis_service
 
 router = APIRouter()
-
 
 # ─────────────────────────────────────────────
 # PUBLIC ENDPOINTS (Guest — kein Login nötig)
@@ -28,39 +22,64 @@ router = APIRouter()
     "/",
     response_model=None,
     summary="Alle aktiven Fischarten abrufen",
-    description="Gibt alle aktiven Arten zurück. **Rolle: Gast (kein Login nötig).**",
-    responses={200: {"description": "Liste aller aktiven Arten"}},
+    description="Gibt alle aktiven Arten mit relativen HATEOAS-Links zurück. **Rolle: Gast.**",
 )
 async def get_all_species(db: AsyncSession = Depends(get_db)):
     """
     Gibt alle Fischarten zurück, die als 'active' markiert sind.
-    Öffentlich zugänglich (Guest access).
+    Inkludiert HATEOAS Links für jede Art, um das Frontend-Rendering zu versorgen.
     """
     result = await db.execute(select(Species).where(Species.active == True))
     species_list = result.scalars().all()
-    return species_list
+
+    current_month = datetime.now().month
+    formatted_list = []
+
+    for species in species_list:
+        species_dict = {
+            "id": species.id,
+            "common_name": species.common_name,
+            "scientific_name": species.scientific_name,
+            "region": species.region,
+            "description": species.description,
+            "notes": species.notes,
+            "radius_km": species.radius_km,
+            "temp_min": species.temp_min,
+            "temp_mid": species.temp_mid,
+            "temp_max": species.temp_max,
+            "temp_range": species.temp_range,
+            "active": species.active,
+            "created_at": species.created_at,
+            "updated_at": species.updated_at,
+            "links": {
+                "self": {"href": f"/species/{species.id}", "method": "GET"},
+                "migration": {
+                    "href": f"/species/{species.id}/migration?month={current_month}",
+                    "method": "GET",
+                },
+                "vessels": {"href": f"/vessels/species/{species.id}", "method": "GET"},
+                "overlap": {
+                    "href": f"/overlap?species_id={species.id}",
+                    "method": "GET",
+                },
+                "alerts": {"href": f"/alerts?species={species.id}", "method": "GET"},
+            },
+        }
+        formatted_list.append(species_dict)
+
+    return formatted_list
 
 
 @router.get(
     "/{species_id}/migration",
     response_model=None,
     summary="Migrationszonen abrufen",
-    description="Gibt die berechnete Migrationszone für einen Monat zurück. **Rolle: Gast.**",
-    responses={
-        200: {"description": "GeoJSON Feature"},
-        400: {"description": "Ungültiger Monat"},
-        404: {"description": "Art nicht gefunden"},
-    },
 )
 async def get_migration_zone(
     species_id: str,
     month: int = Query(..., ge=1, le=12, description="Monat (1–12)"),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Gibt die saisonale Migrationszone(n) einer Art für einen bestimmten Monat zurück.
-    Öffentlich zugänglich (Guest access).
-    """
     result = await db.execute(select(Species).where(Species.id == species_id))
     species = result.scalar_one_or_none()
 
@@ -74,7 +93,7 @@ async def get_migration_zone(
     if zones_dict is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Zone data for '{species_id}' is not yet available. Please try again later.",
+            detail=f"Zone data for '{species_id}' is not yet available.",
         )
 
     month_zones = zones_dict.get(month)
@@ -100,21 +119,10 @@ async def get_migration_zone(
 
 @router.get(
     "/{species_id}",
-    response_model=SpeciesResponse,
+    response_model=None,
     summary="Einzelne Fischart abrufen",
-    description="Gibt Details einer Art zurück. **Rolle: Gast.**",
-    responses={
-        200: {"description": "Art-Details"},
-        404: {"description": "Art nicht gefunden"},
-    },
 )
-async def get_species_by_id(
-    species_id: str, request: Request, db: AsyncSession = Depends(get_db)
-):
-    """
-    Gibt die Details einer Fischart anhand der ID zurück.
-    Öffentlich zugänglich (Guest access).
-    """
+async def get_species_by_id(species_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Species).where(Species.id == species_id))
     species = result.scalar_one_or_none()
 
@@ -124,24 +132,24 @@ async def get_species_by_id(
             detail=f"Species with ID {species_id} not found",
         )
 
-    base_url = str(request.base_url).rstrip("/")
     current_month = datetime.now().month
 
-    hateoas_links = {
-        "self": Link(href=f"{base_url}/species/{species_id}", method="GET"),
-        "migration": Link(
-            href=f"{base_url}/species/{species_id}/migration?month={current_month}",
-            method="GET",
-        ),
-        "vessels": Link(href=f"{base_url}/vessels/species/{species_id}", method="GET"),
-        "overlap": Link(href=f"{base_url}/overlap?species={species_id}", method="GET"),
-        "alerts": Link(href=f"{base_url}/alerts?species={species_id}", method="GET"),
+    return {
+        "id": species.id,
+        "common_name": species.common_name,
+        "scientific_name": species.scientific_name,
+        "region": species.region,
+        "active": species.active,
+        "links": {
+            "self": {"href": f"/species/{species.id}", "method": "GET"},
+            "migration": {
+                "href": f"/species/{species.id}/migration?month={current_month}",
+                "method": "GET",
+            },
+            "vessels": {"href": f"/vessels/species/{species.id}", "method": "GET"},
+            "overlap": {"href": f"/overlap?species_id={species.id}", "method": "GET"},
+        },
     }
-
-    response_data = SpeciesResponse.model_validate(species)
-    response_data.links = hateoas_links
-
-    return response_data
 
 
 # ─────────────────────────────────────────────
@@ -149,43 +157,17 @@ async def get_species_by_id(
 # ─────────────────────────────────────────────
 
 
-@router.post(
-    "/",
-    response_model=None,
-    status_code=201,
-    summary="Neue Fischart anlegen",
-    description="Erstellt eine neue Art. **Rolle: Admin.**",
-    responses={
-        201: {"description": "Art erstellt"},
-        409: {"description": "Art existiert bereits"},
-        422: {"description": "Validierungsfehler"},
-    },
-)
+@router.post("/")
 async def create_species(
     data: SpeciesCreate,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin")),
 ):
-    """
-    Legt eine neue Fischart an. Die ID (Slug) wird vom Admin selbst gesetzt,
-    z.B. 'thunnus-thynnus'. Nur für Admins.
-
-    - **409** wenn die ID bereits existiert
-    - **422** wenn temp_min >= temp_max
-    """
-    # Existiert die ID schon?
     existing = await db.get(Species, data.id)
     if existing:
         raise HTTPException(
             status_code=409, detail=f"Species with ID '{data.id}' already exists"
         )
-
-    # Temperatur-Logik prüfen
-    if data.temp_min is not None and data.temp_max is not None:
-        if data.temp_min >= data.temp_max:
-            raise HTTPException(
-                status_code=422, detail="temp_min must be less than temp_max"
-            )
 
     species = Species(**data.model_dump())
     db.add(species)
@@ -194,34 +176,19 @@ async def create_species(
     return species
 
 
-@router.put(
-    "/{species_id}",
-    response_model=None,
-    summary="Fischart vollständig aktualisieren",
-    description="Ersetzt alle Felder einer Art. **Rolle: Admin.**",
-    responses={
-        200: {"description": "Art aktualisiert"},
-        404: {"description": "Art nicht gefunden"},
-        422: {"description": "Validierungsfehler"},
-    },
-)
+@router.put("/{species_id}")
 async def update_species(
     species_id: str,
     data: SpeciesCreate,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin")),
 ):
-    """
-    Ersetzt alle Felder einer Fischart komplett (Full Update).
-    Nur für Admins. Gibt 404 zurück wenn die Art nicht existiert.
-    """
     species = await db.get(Species, species_id)
     if not species:
         raise HTTPException(
             status_code=404, detail=f"Species with ID '{species_id}' not found"
         )
 
-    # Alle Felder aus dem Request überschreiben
     for key, value in data.model_dump().items():
         setattr(species, key, value)
 
@@ -231,37 +198,19 @@ async def update_species(
     return species
 
 
-@router.patch(
-    "/{species_id}",
-    response_model=None,
-    summary="Fischart teilweise aktualisieren",
-    description="Aktualisiert einzelne Felder. **Rolle: Admin.**",
-    responses={
-        200: {"description": "Art aktualisiert"},
-        404: {"description": "Art nicht gefunden"},
-        422: {"description": "Validierungsfehler"},
-    },
-)
+@router.patch("/{species_id}")
 async def patch_species(
     species_id: str,
     data: SpeciesPatch,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin")),
 ):
-    """
-    Aktualisiert nur die Felder die im Request-Body mitgegeben werden (Partial Update).
-    Felder die nicht mitgegeben werden bleiben unverändert.
-    Nur für Admins.
-
-    Beispiel: Nur temp_mid ändern ohne alle anderen Felder angeben zu müssen.
-    """
     species = await db.get(Species, species_id)
     if not species:
         raise HTTPException(
             status_code=404, detail=f"Species with ID '{species_id}' not found"
         )
 
-    # exclude_unset=True → nur Felder die wirklich im Request stehen werden gesetzt
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(species, key, value)
 
@@ -271,38 +220,18 @@ async def patch_species(
     return species
 
 
-@router.delete(
-    "/{species_id}",
-    status_code=204,
-    summary="Fischart deaktivieren (Soft-Delete)",
-    description="Setzt active=False. Daten bleiben erhalten. **Rolle: Admin.**",
-    responses={
-        204: {"description": "Deaktiviert"},
-        404: {"description": "Art nicht gefunden"},
-    },
-)
+@router.delete("/{species_id}", status_code=204)
 async def delete_species(
     species_id: str,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin")),
 ):
-    """
-    Deaktiviert eine Fischart (Soft Delete) — die Art bleibt in der Datenbank,
-    wird aber auf active=False gesetzt und erscheint nicht mehr in der öffentlichen Liste.
-
-    Warum Soft Delete? Damit historische Reports die auf diese Art verweisen
-    nicht kaputt gehen.
-
-    Nur für Admins. Gibt 404 zurück wenn die Art nicht existiert.
-    """
     species = await db.get(Species, species_id)
     if not species:
         raise HTTPException(
             status_code=404, detail=f"Species with ID '{species_id}' not found"
         )
 
-    # Soft Delete — NICHT aus der DB löschen!
     species.active = False
     species.updated_at = datetime.now()
     await db.commit()
-    # Kein return bei 204

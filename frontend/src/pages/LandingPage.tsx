@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllSpecies } from "../services/api";
-import Header from "@/components/Header";
+import { fetchAllSpecies } from "@/services/api";
 import LandingInfoBox from "@/components/LandingInfoBox";
 import { Fishes } from "@/components/Fishes";
 

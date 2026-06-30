@@ -1,11 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, ArrowLeft, Menu } from "lucide-react";
-import {
-  fetchAllSpecies,
-  fetchMigrationZone,
-  fetchVesselOverlaps,
-} from "../services/api";
+import { ArrowLeft, Menu } from "lucide-react";
+
+import { fetchAllSpecies, followHypermediaLink } from "../services/api";
 import { type Vessel, type RegionData, SEAS, getClosestSea } from "@/types/map";
 
 import MapCanvas from "@/components/Map/MapCanvas";
@@ -35,9 +32,12 @@ export default function MapPage() {
       const activeSpecies = rawSpecies.filter((sp: any) => sp.active);
       return await Promise.all(
         activeSpecies.map(async (sp: any) => {
-          const zoneData = await fetchMigrationZone(sp.id, currentMonth).catch(
-            () => null,
-          );
+          if (!sp.links?.migration) return { speciesId: sp.id, zoneData: null };
+
+          const zoneData = await followHypermediaLink(sp.links.migration, {
+            month: currentMonth,
+          }).catch(() => null);
+
           return { speciesId: sp.id, zoneData };
         }),
       );
@@ -114,15 +114,38 @@ export default function MapPage() {
     queryFn: async () => {
       return await Promise.all(
         REGIONS_DATA.map(async (region) => {
-          const overlapData = await fetchVesselOverlaps(
-            region.id,
-            currentMonth,
-          ).catch(() => ({}));
-          const rawVessels = Array.isArray(overlapData?.tracked_vessels)
-            ? overlapData.tracked_vessels
-            : [];
+          const originalSpecies = rawSpecies.find(
+            (s: any) => s.id === region.id,
+          );
+
+          if (!originalSpecies?.links?.overlap) {
+            return {
+              region,
+              vessels: [],
+              stats: {
+                vessels_tracked_count: 0,
+                average_threat_score: 0.0,
+                maximum_threat_score: 0.0,
+              },
+            };
+          }
+
+          const overlapData = await followHypermediaLink(
+            originalSpecies.links.overlap,
+            { month: currentMonth },
+          ).catch((err) => {
+            console.error("Vessel fetch error:", err);
+            return [];
+          });
+
+          const rawVessels = Array.isArray(overlapData)
+            ? overlapData
+            : Array.isArray(overlapData?.tracked_vessels)
+              ? overlapData.tracked_vessels
+              : [];
+
           const stats = overlapData?.stats || {
-            vessels_tracked_count: 0,
+            vessels_tracked_count: rawVessels.length,
             average_threat_score: 0.0,
             maximum_threat_score: 0.0,
           };
