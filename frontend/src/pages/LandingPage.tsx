@@ -25,14 +25,14 @@ export default function LandingPage() {
   return (
     <>
       <main className="w-full flex flex-col gap-12 overflow-x-hidden">
-        <section className="w-full flex flex-col gap-4 justify-center items-center text-center max-w-xl mx-auto pt-48">
+        <section className="w-full px-6 md:px-0 flex flex-col gap-4 justify-center items-center text-center max-w-xl mx-auto pt-32 md:pt-48">
           <h1 className="title uppercase font-righteous tracking-tighter animate-float-heading">
             Ocean
             <br />
             Guard
           </h1>
 
-          <p className="max-w-md mx-auto text-center text-xl md:text-2xl mt-6 mb-8 leading-relaxed text-balance animate-float-text">
+          <p className="max-w-md mx-auto text-center px-4 md:px-0 text-lg md:text-2xl mt-6 mb-8 leading-relaxed text-balance animate-float-text">
             Critical ocean data exists—but without integration, high-risk
             fishing activity goes undetected.
           </p>
@@ -45,9 +45,11 @@ export default function LandingPage() {
           </button>
         </section>
 
-        <LandingInfoBox />
+        <div className="w-full px-6 md:px-0">
+          <LandingInfoBox />
+        </div>
 
-        <div className="w-full">
+        <div className="w-full px-6 md:px-0">
           <Fishes speciesData={rawSpecies || []} />
         </div>
       </main>

@@ -25,7 +25,9 @@ export default function Header() {
       >
         <nav className="md:hidden bg-white/20 backdrop-blur-lg border border-white/20 shadow-lg flex flex-col w-full px-4 rounded-[1.25rem]">
           <div className="flex justify-between items-center h-16 w-full shrink-0">
-            <Logo className="h-10 w-auto" />
+            <Link to="/">
+              <Logo className="h-10 w-auto" />
+            </Link>
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="p-2 text-3xl relative w-10 h-10 flex items-center justify-center"

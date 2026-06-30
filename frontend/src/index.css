@@ -274,3 +274,10 @@
     transform: translateX(0);
   }
 }
+
+@media (width <= 768px) {
+  .title {
+    font-size: 5.5rem;
+    line-height: 70%;
+  }
+}
