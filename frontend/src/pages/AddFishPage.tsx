@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchAllSpecies,
-  fetchMigrationZone,
+  followHypermediaLink,
   createReport,
 } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -11,15 +11,7 @@ import AddFishRegionsMap from "../components/Map/AddFishRegionsMap";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronDown, CheckCircle2, X } from "lucide-react";
 import { getClosestSea, SEAS } from "../types/map";
-
-interface SpeciesProps {
-  id: string;
-  common_name: string;
-  scientific_name: string;
-  description: string;
-  active?: boolean;
-  region: string;
-}
+import type { Species } from "@/types/species";
 
 interface ZonePayload {
   speciesId: string;
@@ -83,24 +75,30 @@ export default function AddFishPage() {
     null,
   );
 
-  const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery<
-    SpeciesProps[]
-  >({
-    queryKey: ["all-species"],
-    queryFn: fetchAllSpecies,
-    staleTime: 60 * 60 * 1000,
-  });
+  const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery<Species[]>(
+    {
+      queryKey: ["all-species"],
+      queryFn: fetchAllSpecies,
+      staleTime: 60 * 60 * 1000,
+    },
+  );
 
-  // Query to fetch migration zones for active species
   const { data: rawZones, isLoading: isZonesLoading } = useQuery<ZonePayload[]>(
     {
       queryKey: ["migration-zones", currentMonth],
       queryFn: async () => {
         if (!rawSpecies) return [];
         const activeSpecies = rawSpecies.filter((sp) => sp.active !== false);
+
         return await Promise.all(
           activeSpecies.map(async (sp) => {
-            const zoneData = await fetchMigrationZone(sp.id, currentMonth);
+            if (!sp.links?.migration)
+              return { speciesId: sp.id, zoneData: null };
+
+            const zoneData = await followHypermediaLink(sp.links.migration, {
+              month: currentMonth,
+            }).catch(() => null);
+
             return { speciesId: sp.id, zoneData };
           }),
         );

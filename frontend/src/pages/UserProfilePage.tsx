@@ -14,7 +14,7 @@ import { fetchReports, deleteReport } from "../services/api";
 export default function UserProfilePage() {
   const navigate = useNavigate();
 
-  const { user, token, loading } = useAuth();
+  const { user, token, loading: isAuthLoading } = useAuth();
 
   const username =
     user?.displayName || user?.email?.split("@")[0] || "Username";
@@ -32,10 +32,12 @@ export default function UserProfilePage() {
     deleteReportMutation.mutate(reportId);
   };
 
-  const { data: reports = [], isLoading } = useQuery<UserReport[]>({
+  const { data: reports = [], isLoading: isReportsLoading } = useQuery<
+    UserReport[]
+  >({
     queryKey: ["reports"],
     queryFn: () => fetchReports(token!),
-    enabled: !!token && !loading,
+    enabled: !!token && !isAuthLoading,
   });
 
   const handleLogout = async () => {
@@ -46,6 +48,18 @@ export default function UserProfilePage() {
       console.error("Failed to log out:", error);
     }
   };
+
+  if (isAuthLoading || isReportsLoading) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-ocean text-white font-cal select-none">
+        <div className="relative w-18 h-18 flex items-center justify-center mb-8">
+          <div className="wave-ripple"></div>
+          <div className="wave-ripple wave-ripple-delayed"></div>
+        </div>
+        <h2 className="text-xl tracking-wider">Loading...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-ocean px-6 pb-16 pt-32 font-cal md:px-14">
@@ -72,7 +86,7 @@ export default function UserProfilePage() {
 
         <SectionHeader />
 
-        {isLoading ? (
+        {isReportsLoading ? (
           <p className="text-2xl text-white">Loading reports...</p>
         ) : reports.length === 0 ? (
           <section className="rounded-[2em] border border-white/40 bg-white/15 px-8 py-10 shadow-lg backdrop-blur-md md:px-12">
