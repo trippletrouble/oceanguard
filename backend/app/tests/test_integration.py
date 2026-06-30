@@ -344,3 +344,124 @@ async def test_favorite_regions_crud(client, mock_firebase_admin):
     assert data_get[0]["name"] == "Test Region"
     assert data_get[0]["bbox"] == [35.0, 10.0, 45.0, 20.0]
 
+
+@pytest.mark.asyncio
+async def test_species_hateoas(client, db_session):
+    # Seed species
+    from app.models.species import Species
+    species = Species(
+        id="thunnus-thynnus",
+        common_name="Roter Thun",
+        scientific_name="Thunnus thynnus",
+        region="Mittelmeer",
+        temp_min=15.0,
+        temp_max=25.0,
+        temp_mid=22.0,
+        temp_range=10.0,
+        radius_km=200,
+        active=True
+    )
+    db_session.add(species)
+    await db_session.commit()
+
+    # Test list endpoint
+    res_list = await client.get("/species/")
+    assert res_list.status_code == 200
+    data_list = res_list.json()
+    assert len(data_list) > 0
+    for item in data_list:
+        assert "_links" in item
+        links = item["_links"]
+        assert "self" in links
+        assert "migration" in links
+        assert "vessels" in links
+        assert "overlap" in links
+        assert "alerts" in links
+
+    # Test detail endpoint
+    species_id = data_list[0]["id"]
+    res_detail = await client.get(f"/species/{species_id}")
+    assert res_detail.status_code == 200
+    data_detail = res_detail.json()
+    assert "_links" in data_detail
+    links = data_detail["_links"]
+    assert links["self"] == f"/species/{species_id}"
+    assert links["migration"] == f"/species/{species_id}/migration"
+
+
+@pytest.mark.asyncio
+async def test_species_caching_and_etag(client, db_session):
+    # Seed species
+    from app.models.species import Species
+    species = Species(
+        id="thunnus-thynnus",
+        common_name="Roter Thun",
+        scientific_name="Thunnus thynnus",
+        region="Mittelmeer",
+        temp_min=15.0,
+        temp_max=25.0,
+        temp_mid=22.0,
+        temp_range=10.0,
+        radius_km=200,
+        active=True
+    )
+    db_session.add(species)
+    await db_session.commit()
+
+    # 1. Fetch species and expect caching headers
+    res = await client.get("/species/")
+    assert res.status_code == 200
+    assert "etag" in res.headers
+    assert res.headers["cache-control"] == "public, max-age=86400"
+    etag = res.headers["etag"]
+
+    # 2. Re-request with If-None-Match header
+    res_cached = await client.get("/species/", headers={"if-none-match": etag})
+    assert res_cached.status_code == 304
+    assert res_cached.text == ""
+
+
+@pytest.mark.asyncio
+async def test_migration_caching_and_etag(client, db_session):
+    # Seed species
+    from app.models.species import Species
+    species = Species(
+        id="thunnus-thynnus",
+        common_name="Roter Thun",
+        scientific_name="Thunnus thynnus",
+        region="Mittelmeer",
+        temp_min=15.0,
+        temp_max=25.0,
+        temp_mid=22.0,
+        temp_range=10.0,
+        radius_km=200,
+        active=True
+    )
+    db_session.add(species)
+    await db_session.commit()
+
+    # Mock OBIS zone cache
+    from app.services.obis_service import obis_service
+    obis_service._zone_cache["thunnus-thynnus"] = {
+        6: [
+            {
+                "center": {"lat": 40.0, "lng": 6.0},
+                "radius_km": 200,
+                "sighting_count": 100
+            }
+        ]
+    }
+
+    # 1. Fetch migration and expect caching headers
+    res = await client.get("/species/thunnus-thynnus/migration?month=6")
+    assert res.status_code == 200
+    assert "etag" in res.headers
+    assert res.headers["cache-control"] == "public, max-age=86400"
+    etag = res.headers["etag"]
+
+    # 2. Re-request with If-None-Match header
+    res_cached = await client.get("/species/thunnus-thynnus/migration?month=6", headers={"if-none-match": etag})
+    assert res_cached.status_code == 304
+    assert res_cached.text == ""
+
+

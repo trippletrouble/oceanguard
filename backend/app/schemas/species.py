@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SpeciesBase(BaseModel):
@@ -42,5 +42,6 @@ class SpeciesResponse(SpeciesBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    links: dict[str, str] | None = Field(None, alias="_links")
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

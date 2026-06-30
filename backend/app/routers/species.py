@@ -1,6 +1,8 @@
 from datetime import datetime
+import hashlib
+import json
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -9,7 +11,7 @@ from app.models.species import Species
 from app.models.user import User
 from app.services.obis_service import obis_service
 from app.auth.dependencies import get_current_user, require_role
-from app.schemas.species import SpeciesCreate, SpeciesPatch
+from app.schemas.species import SpeciesCreate, SpeciesPatch, SpeciesResponse
 
 router = APIRouter()
 
@@ -20,36 +22,72 @@ router = APIRouter()
 
 @router.get(
     "/",
-    response_model=None,
+    response_model=list[SpeciesResponse],
     summary="Alle aktiven Fischarten abrufen",
-    description="Gibt alle aktiven Arten zurück. **Rolle: Gast (kein Login nötig).**",
+    description="Gibt alle aktiven Arten mit Hypermedia-Links zurück. Unterstützt ETag Caching. **Rolle: Gast (kein Login nötig).**",
     responses={
-        200: {"description": "Liste aller aktiven Arten"}
+        200: {"description": "Liste aller aktiven Arten mit Links und Caching-Header"}
     }
 )
-async def get_all_species(db: AsyncSession = Depends(get_db)):
+async def get_all_species(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
     """
     Gibt alle Fischarten zurück, die als 'active' markiert sind.
     Öffentlich zugänglich (Guest access).
     """
     result = await db.execute(select(Species).where(Species.active == True))
     species_list = result.scalars().all()
-    return species_list
+
+    response_data = []
+    for s in species_list:
+        links = {
+            "self": f"/species/{s.id}",
+            "migration": f"/species/{s.id}/migration",
+            "vessels": f"/vessels",
+            "overlap": f"/overlaps?species={s.id}",
+            "alerts": f"/alerts?species={s.id}"
+        }
+        resp = SpeciesResponse.model_validate(s)
+        resp.links = links
+        response_data.append(resp)
+
+    # 1. Serialize data stably to generate the ETag
+    serialized = json.dumps(
+        [m.model_dump(by_alias=True, mode="json") for m in response_data],
+        sort_keys=True
+    )
+    etag_value = f'W/"{hashlib.md5(serialized.encode("utf-8")).hexdigest()}"'
+
+    # 2. Validate If-None-Match
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match and if_none_match == etag_value:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+
+    # 3. Set Cache headers
+    response.headers["ETag"] = etag_value
+    response.headers["Cache-Control"] = "public, max-age=86400"
+
+    return response_data
 
 
 @router.get(
     "/{species_id}/migration",
     response_model=None,
     summary="Migrationszonen abrufen",
-    description="Gibt die berechnete Migrationszone für einen Monat zurück. **Rolle: Gast.**",
+    description="Gibt die berechnete Migrationszone für einen Monat zurück. Unterstützt ETag Caching. **Rolle: Gast.**",
     responses={
-        200: {"description": "GeoJSON Feature"},
+        200: {"description": "GeoJSON Feature mit Caching-Header"},
         400: {"description": "Ungültiger Monat"},
         404: {"description": "Art nicht gefunden"}
     }
 )
 async def get_migration_zone(
     species_id: str,
+    request: Request,
+    response: Response,
     month: int = Query(..., ge=1, le=12, description="Monat (1–12)"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -80,7 +118,7 @@ async def get_migration_zone(
             detail=f"No sighting data available for '{species_id}' in month {month}"
         )
 
-    return {
+    response_data = {
         "species_id": species_id,
         "month": month,
         "zones": [
@@ -93,14 +131,29 @@ async def get_migration_zone(
         ]
     }
 
+    # 1. Serialize stably to generate ETag
+    serialized = json.dumps(response_data, sort_keys=True)
+    etag_value = f'W/"{hashlib.md5(serialized.encode("utf-8")).hexdigest()}"'
+
+    # 2. Validate If-None-Match
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match and if_none_match == etag_value:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+
+    # 3. Set Cache headers
+    response.headers["ETag"] = etag_value
+    response.headers["Cache-Control"] = "public, max-age=86400"
+
+    return response_data
+
 
 @router.get(
     "/{species_id}",
-    response_model=None,
+    response_model=SpeciesResponse,
     summary="Einzelne Fischart abrufen",
-    description="Gibt Details einer Art zurück. **Rolle: Gast.**",
+    description="Gibt Details einer Art mit Hypermedia-Links zurück. **Rolle: Gast.**",
     responses={
-        200: {"description": "Art-Details"},
+        200: {"description": "Art-Details mit Hypermedia-Links"},
         404: {"description": "Art nicht gefunden"}
     }
 )
@@ -118,7 +171,16 @@ async def get_species_by_id(species_id: str, db: AsyncSession = Depends(get_db))
             detail=f"Species with ID {species_id} not found"
         )
 
-    return species
+    links = {
+        "self": f"/species/{species.id}",
+        "migration": f"/species/{species.id}/migration",
+        "vessels": f"/vessels",
+        "overlap": f"/overlaps?species={species.id}",
+        "alerts": f"/alerts?species={species.id}"
+    }
+    resp = SpeciesResponse.model_validate(species)
+    resp.links = links
+    return resp
 
 
 # ─────────────────────────────────────────────
