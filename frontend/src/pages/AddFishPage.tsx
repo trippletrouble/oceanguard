@@ -1,6 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllSpecies, fetchMigrationZone, createReport } from "../services/api";
+import {
+  fetchAllSpecies,
+  fetchMigrationZone,
+  createReport,
+} from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
 import AddFishRegionsMap from "../components/Map/AddFishRegionsMap";
@@ -25,16 +29,18 @@ interface ZonePayload {
 }
 
 interface MigrationZone {
-  center?: {
-    lng?: number;
-    lat?: number;
-  } | [number, number];
+  center?:
+    | {
+        lng?: number;
+        lat?: number;
+      }
+    | [number, number];
   radius_km?: number;
 }
 
 interface ResolvedRegion {
   name: string;
-  bbox: [number, number, number, number]; // [min_lat, min_lng, max_lat, max_lng]
+  bbox: [number, number, number, number];
 }
 
 interface BannerState {
@@ -68,34 +74,41 @@ export default function AddFishPage() {
   const { token } = useAuth();
   const currentMonth = new Date().getMonth() + 1;
 
-  // Keyed by species ID, value is the index of selected region option
-  const [selectedRegionIndex, setSelectedRegionIndex] = useState<Record<string, number>>({});
+  const [selectedRegionIndex, setSelectedRegionIndex] = useState<
+    Record<string, number>
+  >({});
   const [selectedSpeciesId, setSelectedSpeciesId] = useState("");
   const [banner, setBanner] = useState<BannerState | null>(null);
-  const [submittingSpeciesId, setSubmittingSpeciesId] = useState<string | null>(null);
+  const [submittingSpeciesId, setSubmittingSpeciesId] = useState<string | null>(
+    null,
+  );
 
-  const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery<SpeciesProps[]>({
+  const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery<
+    SpeciesProps[]
+  >({
     queryKey: ["all-species"],
     queryFn: fetchAllSpecies,
     staleTime: 60 * 60 * 1000,
   });
 
   // Query to fetch migration zones for active species
-  const { data: rawZones, isLoading: isZonesLoading } = useQuery<ZonePayload[]>({
-    queryKey: ["migration-zones", currentMonth],
-    queryFn: async () => {
-      if (!rawSpecies) return [];
-      const activeSpecies = rawSpecies.filter((sp) => sp.active !== false);
-      return await Promise.all(
-        activeSpecies.map(async (sp) => {
-          const zoneData = await fetchMigrationZone(sp.id, currentMonth);
-          return { speciesId: sp.id, zoneData };
-        })
-      );
+  const { data: rawZones, isLoading: isZonesLoading } = useQuery<ZonePayload[]>(
+    {
+      queryKey: ["migration-zones", currentMonth],
+      queryFn: async () => {
+        if (!rawSpecies) return [];
+        const activeSpecies = rawSpecies.filter((sp) => sp.active !== false);
+        return await Promise.all(
+          activeSpecies.map(async (sp) => {
+            const zoneData = await fetchMigrationZone(sp.id, currentMonth);
+            return { speciesId: sp.id, zoneData };
+          }),
+        );
+      },
+      staleTime: 15 * 60 * 1000,
+      enabled: !!rawSpecies && rawSpecies.length > 0,
     },
-    staleTime: 15 * 60 * 1000,
-    enabled: !!rawSpecies && rawSpecies.length > 0,
-  });
+  );
 
   // Resolve regions & bboxes for each species
   const speciesRegionsMap = useMemo<Record<string, ResolvedRegion[]>>(() => {
@@ -105,13 +118,19 @@ export default function AddFishPage() {
 
     rawSpecies.forEach((sp) => {
       const resolvedList: ResolvedRegion[] = [];
-      const matchedZonePayload = rawZones?.find((z) => z.speciesId === sp.id)?.zoneData;
+      const matchedZonePayload = rawZones?.find(
+        (z) => z.speciesId === sp.id,
+      )?.zoneData;
       const zones = matchedZonePayload?.zones || [];
 
       if (zones.length > 0) {
         zones.forEach((zone) => {
-          const lng = Array.isArray(zone.center) ? zone.center[0] : zone.center?.lng;
-          const lat = Array.isArray(zone.center) ? zone.center[1] : zone.center?.lat;
+          const lng = Array.isArray(zone.center)
+            ? zone.center[0]
+            : zone.center?.lng;
+          const lat = Array.isArray(zone.center)
+            ? zone.center[1]
+            : zone.center?.lat;
 
           if (lng !== undefined && lat !== undefined) {
             const radiusKm = zone.radius_km || 100;
@@ -141,7 +160,9 @@ export default function AddFishPage() {
         const rawRegions = sp.region.split("/").map((r) => r.trim());
         rawRegions.forEach((regName) => {
           // Attempt to find matching predefined sea center coordinates for bounding box calculation
-          const matchedSea = SEAS.find((s) => s.name.toLowerCase().includes(regName.toLowerCase()));
+          const matchedSea = SEAS.find((s) =>
+            s.name.toLowerCase().includes(regName.toLowerCase()),
+          );
           const defaultCenter = matchedSea ? matchedSea.center : [5.0, 48.0]; // fallback global overview center
           const buffer = 150 / 111; // assume default 150km radius
 
@@ -174,9 +195,14 @@ export default function AddFishPage() {
   );
 
   const selectedFish =
-    activeSpecies.find((fish) => fish.id === selectedSpeciesId) || activeSpecies[0];
-  const selectedFishRegionIndex = selectedFish ? selectedRegionIndex[selectedFish.id] || 0 : 0;
-  const selectedFishRegions = selectedFish ? speciesRegionsMap[selectedFish.id] || [] : [];
+    activeSpecies.find((fish) => fish.id === selectedSpeciesId) ||
+    activeSpecies[0];
+  const selectedFishRegionIndex = selectedFish
+    ? selectedRegionIndex[selectedFish.id] || 0
+    : 0;
+  const selectedFishRegions = selectedFish
+    ? speciesRegionsMap[selectedFish.id] || []
+    : [];
   const selectedFishRegion = selectedFishRegions[selectedFishRegionIndex];
   const selectedFishNames = selectedFish
     ? getCleanedFishNames(selectedFish.common_name)
@@ -184,7 +210,9 @@ export default function AddFishPage() {
 
   useEffect(() => {
     if (activeSpecies.length === 0) return;
-    const selectedStillExists = activeSpecies.some((fish) => fish.id === selectedSpeciesId);
+    const selectedStillExists = activeSpecies.some(
+      (fish) => fish.id === selectedSpeciesId,
+    );
     if (!selectedStillExists) {
       setSelectedSpeciesId(activeSpecies[0].id);
     }
@@ -219,7 +247,10 @@ export default function AddFishPage() {
     }));
   };
 
-  const handleMonitorSpecies = async (speciesId: string, displayName: string) => {
+  const handleMonitorSpecies = async (
+    speciesId: string,
+    displayName: string,
+  ) => {
     if (!token) {
       alert("You must be logged in to monitor a species.");
       return;
@@ -256,22 +287,27 @@ export default function AddFishPage() {
     <div className="min-h-screen bg-ocean px-6 pb-20 pt-32 font-cal md:px-14 text-white flex flex-col relative">
       <Header />
 
-      {/* Redesigned Success Banner */}
       {banner && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-lg animate-[slideDown_0.4s_ease-out_forwards] pointer-events-auto">
-          <div className="glass-nav rounded-2xl border border-emerald-500/40 p-4.5 shadow-2xl flex items-start gap-3 backdrop-blur-xl">
+        <div className="fixed top-6 right-6 z-[100] w-[90%] max-w-sm animate-[slideInRight_0.4s_ease-out_forwards] pointer-events-auto">
+          <div className="glass-nav rounded-2xl border border-emerald-500/40 p-4.5 shadow-2xl flex items-start gap-3 backdrop-blur-xl bg-slate-900/80">
             <div className="p-1 rounded-full bg-emerald-500/10 text-emerald-400 mt-0.5 shrink-0 animate-pulse">
               <CheckCircle2 size={22} />
             </div>
-            <div className="flex-grow">
+            <div className="grow">
               <h4 className="font-righteous text-emerald-400 text-[14px] uppercase tracking-wider mb-1">
                 Monitoring Activated
               </h4>
               <p className="text-[13.5px] text-slate-200 leading-normal font-medium">
-                <span className="text-white font-semibold">{banner.speciesName}</span> is now monitored in the{" "}
-                <span className="text-sky-300 font-semibold">{banner.regionName}</span>.
+                <span className="text-white font-semibold">
+                  {banner.speciesName}
+                </span>{" "}
+                is now monitored in the{" "}
+                <span className="text-sky-300 font-semibold">
+                  {banner.regionName}
+                </span>
+                .
               </p>
-              <div className="mt-2 text-[11px] font-mono text-slate-400 bg-slate-900/60 rounded-lg p-2 border border-white/5">
+              <div className="mt-2 text-[11px] font-mono text-slate-400 bg-slate-950/60 rounded-lg p-2 border border-white/5">
                 BBox: [{banner.bbox.join(", ")}]
               </div>
             </div>
@@ -286,17 +322,18 @@ export default function AddFishPage() {
       )}
 
       <main className="mx-auto flex max-w-6xl w-full flex-col gap-10 z-10">
-        {/* Navigation back and header */}
-        <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => navigate(-1)}
-              className="group cursor-pointer flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-5 py-2 font-medium text-sm text-white hover:bg-white hover:text-slate-800 transition-all duration-300"
-            >
-              <ArrowLeft size={16} />
-              Back
-            </button>
-            <h1 className="mt-4 font-righteous text-5xl uppercase tracking-tighter animate-float-heading md:text-7xl">
+        <section className="w-full flex flex-col gap-4 items-center mx-auto">
+          <div className="relative flex w-full items-center justify-center py-2 text-black">
+            <div className="absolute left-0">
+              <button
+                onClick={() => navigate(-1)}
+                className="group flex items-center gap-2 p-4 text-sm font-medium hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={32} className="group-hover:text-slate-600" />
+              </button>
+            </div>
+
+            <h1 className="font-righteous text-5xl uppercase tracking-tighter md:text-7xl">
               Add Species
             </h1>
           </div>
@@ -345,7 +382,9 @@ export default function AddFishPage() {
                       className="w-full py-3.5 pl-5 pr-12 border border-white/20 rounded-2xl text-[15px] outline-none cursor-pointer bg-slate-900/80 hover:bg-slate-900/90 text-white font-medium appearance-none transition-all duration-300 focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10"
                     >
                       {activeSpecies.map((fish) => {
-                        const { displayName } = getCleanedFishNames(fish.common_name);
+                        const { displayName } = getCleanedFishNames(
+                          fish.common_name,
+                        );
                         return (
                           <option key={fish.id} value={fish.id}>
                             {displayName}
@@ -367,7 +406,12 @@ export default function AddFishPage() {
                   <div className="relative w-full">
                     <select
                       value={selectedFishRegionIndex}
-                      onChange={(e) => handleRegionChange(selectedFish.id, Number(e.target.value))}
+                      onChange={(e) =>
+                        handleRegionChange(
+                          selectedFish.id,
+                          Number(e.target.value),
+                        )
+                      }
                       className="w-full py-3.5 pl-5 pr-12 border border-white/20 rounded-2xl text-[15px] outline-none cursor-pointer bg-slate-900/80 hover:bg-slate-900/90 text-white font-medium appearance-none transition-all duration-300 focus:border-sky-400 focus:ring-4 focus:ring-sky-400/10"
                     >
                       {selectedFishRegions.map((option, idx) => (
@@ -393,7 +437,10 @@ export default function AddFishPage() {
                   type="button"
                   disabled={submittingSpeciesId !== null || !selectedFishRegion}
                   onClick={() =>
-                    handleMonitorSpecies(selectedFish.id, selectedFishNames.displayName)
+                    handleMonitorSpecies(
+                      selectedFish.id,
+                      selectedFishNames.displayName,
+                    )
                   }
                   className={`font-righteous text-md uppercase tracking-wider rounded-[1.25rem] w-full py-3.5 border border-white/40 bg-white/10 transition-all duration-300 shadow-md ${
                     submittingSpeciesId === selectedFish.id
@@ -403,7 +450,9 @@ export default function AddFishPage() {
                         : "cursor-pointer hover:bg-white hover:text-slate-900 active:scale-[0.98]"
                   }`}
                 >
-                  {submittingSpeciesId === selectedFish.id ? "Activating..." : "Monitor Species"}
+                  {submittingSpeciesId === selectedFish.id
+                    ? "Activating..."
+                    : "Monitor Species"}
                 </button>
               </div>
             </div>
