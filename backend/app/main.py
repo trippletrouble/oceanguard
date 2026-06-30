@@ -28,30 +28,12 @@ def setup_firebase():
         cred = credentials.Certificate(str(cert_path))
         firebase_admin.initialize_app(cred)
 
-# --- DATABASE SEEDING ---
-async def seed_database():
-    """Lädt initiale Daten in die Datenbank."""
-    async with async_session() as db:
-        # Prüfen, ob bereits Daten vorhanden sind
-        existing = await db.execute(select(Species).limit(1))
-        if existing.scalar():
-            return
-
-        seed_file = Path(__file__).parent / "data" / "species_seed.json"
-        if seed_file.exists():
-            with open(seed_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                db.add_all([Species(**item) for item in data])
-                await db.commit()
-                print(f"Database seeded with {len(data)} species.")
-
 # --- LIFESPAN ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup-Logik
     await init_db()
     setup_firebase()
-    #await seed_database()
 
     species_ids = list(obis_service.SPECIES_CONFIG.keys())
     for species_id in species_ids:

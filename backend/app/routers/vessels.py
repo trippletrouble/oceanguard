@@ -107,32 +107,3 @@ async def get_vessel(mmsi: int):
     return vessel
 
 # @router.get("/species/{species_id}/debug")
-# async def debug_species(species_id: str):
-
-#     zones = obis_service.get_zones(species_id)
-
-#     if not zones:
-#         return {
-#             "species_id": species_id,
-#             "error": "Unknown species"
-#         }
-
-#     month = datetime.now().month
-#     zone = zones.get(month)
-#     if not zone:
-#         return {
-#             "species_id": species_id,
-#             "error": f"No zone data for month {month}"
-#         }
-    
-#     center = zone.get("center")
-
-#     vessels = ais_service.get_vessels_for_species(species_id)
-    
-#     return {
-#         "species_id": species_id,
-#         "vessel_count": len(vessels),
-#         "zone": zone,
-#         "center": center,
-#         "vessels": vessels
-#     }
