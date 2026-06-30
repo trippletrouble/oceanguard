@@ -72,7 +72,7 @@ export default function ReportPanel({ report, onDelete }: ReportPanelProps) {
   const vessels = report.snapshot.tracked_vessels ?? [];
 
   return (
-    <section className="rounded-[2rem] border border-white/40 bg-white/15 px-8 py-10 shadow-lg backdrop-blur-md md:px-12">
+    <section className="rounded-4xl border border-white/40 bg-white/15 px-8 py-10 shadow-lg backdrop-blur-md md:px-12">
       <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div>
           <h3 className="font-cal text-5xl text-black md:text-6xl">
@@ -84,7 +84,16 @@ export default function ReportPanel({ report, onDelete }: ReportPanelProps) {
           </p>
 
           <p className="mt-2 text-lg text-blue-950">
-            Created {new Date(report.created_at).toLocaleDateString()}
+            Created on{" "}
+            {new Date(
+              report.created_at.endsWith("Z")
+                ? report.created_at
+                : `${report.created_at}Z`,
+            ).toLocaleDateString("de-DE", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
           </p>
         </div>
 
@@ -192,4 +201,3 @@ export default function ReportPanel({ report, onDelete }: ReportPanelProps) {
     </section>
   );
 }
-
