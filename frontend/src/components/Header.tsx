@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 
 export default function Header() {
@@ -20,7 +21,6 @@ export default function Header() {
       <header
         className={`${isScrolled ? "text-white" : "text-black"} w-full h-auto mt-5 flex justify-between items-center text-[1.5rem] fixed top-0 left-1/2 -translate-x-1/2 z-50 text-lg lg:text-[1.5rem] px-4 md:px-8 transition-colors`}
       >
-        {/*Mobile*/}
         <nav className="md:hidden bg-white/20 backdrop-blur-lg border border-white/20 shadow-lg flex flex-col w-full px-4 rounded-[1.25rem]">
           <div className="flex justify-between items-center h-16 w-full shrink-0">
             <Logo className="h-10 w-auto" />
@@ -54,16 +54,20 @@ export default function Header() {
             <div className="overflow-hidden">
               <ul className="flex flex-col gap-8 px-4 pb-8 items-end text-right text-base pt-2">
                 <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                  <a href="/">HOME</a>
+                  <Link to="/">HOME</Link>
                 </li>
                 <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                  <a href="/about">ABOUT</a>
+                  <Link to="/about">ABOUT</Link>
                 </li>
                 <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                  <a href="/map">MAP</a>
+                  <Link to="/map" onClick={() => setIsOpen(false)}>
+                    MAP
+                  </Link>
                 </li>
                 <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                  <a href="/login">LOGIN</a>
+                  <Link to="/login" onClick={() => setIsOpen(false)}>
+                    LOGIN
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -73,29 +77,28 @@ export default function Header() {
         {/* Desktop */}
         <div className="hidden md:flex w-full justify-between items-center">
           <div className="flex flex-1 justify-start">
-            {/*Replaced with component so that the colors stay flexible*/}
             <Logo className="h-12 w-auto" />
           </div>
           <nav className="bg-white/20 backdrop-blur-lg border border-white/20 shadow-lg h-16 flex items-center px-4 rounded-[1.25rem]">
             <ul className="flex gap-12 md:gap-24 px-4 md:px-10">
               <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                <a href="/">HOME</a>
+                <Link to="/">HOME</Link>
               </li>
               <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                <a href="/about">ABOUT</a>
+                <Link to="/about">ABOUT</Link>
               </li>
               <li className="transition transform duration-300 hover:scale-150 hover:text-blue-500">
-                <a href="/map">MAP</a>
+                <Link to="/map">MAP</Link>
               </li>
             </ul>
           </nav>
           <div className="flex-1 flex justify-end">
-            <a
-              href="/login"
+            <Link
+              to="/login"
               className="transition transform duration-300 hover:scale-150 hover:text-blue-500"
             >
               LOGIN
-            </a>
+            </Link>
           </div>
         </div>
       </header>
