@@ -54,7 +54,7 @@ export default function Fishes({ speciesData }: FishesComponentProps) {
     <>
       <section
         ref={sectionRef}
-        className="max-w-[75%] flex flex-col gap-0 md:gap-12 justify-center mx-auto mb-20"
+        className="md:max-w-[75%] flex flex-col gap-0 md:gap-12 justify-center mx-auto mb-20"
       >
         <div
           className={`title flex gap-4 text-center justify-center items-center transition-all duration-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
@@ -76,7 +76,7 @@ export default function Fishes({ speciesData }: FishesComponentProps) {
           </h2>
         </div>
 
-        <div className="@container fishes-container grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12 lg:gap-18 font-cal mt-12">
+        <div className="@container fishes-container grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-18 font-cal mt-12">
           {speciesData.map((fish) => {
             const { displayName, imgSlug } = getCleanedFishNames(
               fish.common_name,
@@ -114,7 +114,7 @@ export default function Fishes({ speciesData }: FishesComponentProps) {
                     </p>
                   </div>
 
-                  <p className="fish-desc relative md:absolute px-10 text-xs md:text-sm leading-relaxed">
+                  <p className="fish-desc relative md:absolute px-10 text-sm leading-relaxed">
                     {fish.description}
                   </p>
                 </div>

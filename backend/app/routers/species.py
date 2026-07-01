@@ -3,30 +3,31 @@ import hashlib
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, Response
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.dependencies import get_current_user, require_role
 from app.database import get_db
 from app.models.species import Species
 from app.models.user import User
-from app.services.obis_service import obis_service
-from app.auth.dependencies import get_current_user, require_role
 from app.schemas.species import SpeciesCreate, SpeciesPatch, SpeciesResponse
+from app.services.obis_service import obis_service
 
 router = APIRouter()
-
 
 # ─────────────────────────────────────────────
 # PUBLIC ENDPOINTS (Guest — kein Login nötig)
 # ─────────────────────────────────────────────
 
+
 @router.get(
     "/",
-    response_model=list[SpeciesResponse],
+    response_model=None,
     summary="Alle aktiven Fischarten abrufen",
-    description="Gibt alle aktiven Arten mit Hypermedia-Links zurück. Unterstützt ETag Caching. **Rolle: Gast (kein Login nötig).**",
+    description="Gibt alle aktiven Arten mit relativen HATEOAS-Links zurück. Unterstützt ETag Caching. **Rolle: Gast.**",
     responses={
-        200: {"description": "Liste aller aktiven Arten mit Links und Caching-Header"}
+        200: {"description": "Liste aller aktiven Arten mit HATEOAS-Links und Caching-Header"}
     }
 )
 async def get_all_species(
@@ -36,27 +37,49 @@ async def get_all_species(
 ):
     """
     Gibt alle Fischarten zurück, die als 'active' markiert sind.
-    Öffentlich zugänglich (Guest access).
+    Inkludiert HATEOAS Links für jede Art, um das Frontend-Rendering zu versorgen.
     """
     result = await db.execute(select(Species).where(Species.active == True))
     species_list = result.scalars().all()
 
-    response_data = []
-    for s in species_list:
-        links = {
-            "self": f"/species/{s.id}",
-            "migration": f"/species/{s.id}/migration",
-            "vessels": f"/vessels",
-            "overlap": f"/overlaps?species={s.id}",
-            "alerts": f"/alerts?species={s.id}"
+    current_month = datetime.now().month
+    formatted_list = []
+
+    for species in species_list:
+        species_dict = {
+            "id": species.id,
+            "common_name": species.common_name,
+            "scientific_name": species.scientific_name,
+            "region": species.region,
+            "description": species.description,
+            "notes": species.notes,
+            "radius_km": species.radius_km,
+            "temp_min": species.temp_min,
+            "temp_mid": species.temp_mid,
+            "temp_max": species.temp_max,
+            "temp_range": species.temp_range,
+            "active": species.active,
+            "created_at": species.created_at,
+            "updated_at": species.updated_at,
+            "links": {
+                "self": {"href": f"/species/{species.id}", "method": "GET"},
+                "migration": {
+                    "href": f"/species/{species.id}/migration?month={current_month}",
+                    "method": "GET",
+                },
+                "vessels": {"href": f"/vessels/species/{species.id}", "method": "GET"},
+                "overlap": {
+                    "href": f"/overlap?species_id={species.id}",
+                    "method": "GET",
+                },
+                "alerts": {"href": f"/alerts?species={species.id}", "method": "GET"},
+            },
         }
-        resp = SpeciesResponse.model_validate(s)
-        resp.links = links
-        response_data.append(resp)
+        formatted_list.append(species_dict)
 
     # 1. Serialize data stably to generate the ETag
     serialized = json.dumps(
-        [m.model_dump(by_alias=True, mode="json") for m in response_data],
+        jsonable_encoder(formatted_list),
         sort_keys=True
     )
     etag_value = f'W/"{hashlib.md5(serialized.encode("utf-8")).hexdigest()}"'
@@ -70,7 +93,7 @@ async def get_all_species(
     response.headers["ETag"] = etag_value
     response.headers["Cache-Control"] = "public, max-age=86400"
 
-    return response_data
+    return formatted_list
 
 
 @router.get(
@@ -91,31 +114,27 @@ async def get_migration_zone(
     month: int = Query(..., ge=1, le=12, description="Monat (1–12)"),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Gibt die saisonale Migrationszone(n) einer Art für einen bestimmten Monat zurück.
-    Öffentlich zugänglich (Guest access).
-    """
     result = await db.execute(select(Species).where(Species.id == species_id))
     species = result.scalar_one_or_none()
 
     if not species:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Species with ID '{species_id}' not found"
+            detail=f"Species with ID '{species_id}' not found",
         )
 
     zones_dict = obis_service.get_zones(species_id)
     if zones_dict is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Zone data for '{species_id}' is not yet available. Please try again later."
+            detail=f"Zone data for '{species_id}' is not yet available.",
         )
 
     month_zones = zones_dict.get(month)
     if not month_zones:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No sighting data available for '{species_id}' in month {month}"
+            detail=f"No sighting data available for '{species_id}' in month {month}",
         )
 
     response_data = {
@@ -125,10 +144,10 @@ async def get_migration_zone(
             {
                 "center": zone.get("center"),
                 "radius_km": zone.get("radius_km"),
-                "sighting_count": zone.get("sighting_count", 0)
+                "sighting_count": zone.get("sighting_count", 0),
             }
             for zone in month_zones
-        ]
+        ],
     }
 
     # 1. Serialize stably to generate ETag
@@ -149,38 +168,42 @@ async def get_migration_zone(
 
 @router.get(
     "/{species_id}",
-    response_model=SpeciesResponse,
+    response_model=None,
     summary="Einzelne Fischart abrufen",
-    description="Gibt Details einer Art mit Hypermedia-Links zurück. **Rolle: Gast.**",
+    description="Gibt Details einer Art mit relativen HATEOAS-Links zurück. **Rolle: Gast.**",
     responses={
-        200: {"description": "Art-Details mit Hypermedia-Links"},
+        200: {"description": "Art-Details mit HATEOAS-Links"},
         404: {"description": "Art nicht gefunden"}
     }
 )
 async def get_species_by_id(species_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Gibt die Details einer Fischart anhand der ID zurück.
-    Öffentlich zugänglich (Guest access).
-    """
     result = await db.execute(select(Species).where(Species.id == species_id))
     species = result.scalar_one_or_none()
 
     if not species:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Species with ID {species_id} not found"
+            detail=f"Species with ID {species_id} not found",
         )
 
-    links = {
-        "self": f"/species/{species.id}",
-        "migration": f"/species/{species.id}/migration",
-        "vessels": f"/vessels",
-        "overlap": f"/overlaps?species={species.id}",
-        "alerts": f"/alerts?species={species.id}"
+    current_month = datetime.now().month
+
+    return {
+        "id": species.id,
+        "common_name": species.common_name,
+        "scientific_name": species.scientific_name,
+        "region": species.region,
+        "active": species.active,
+        "links": {
+            "self": {"href": f"/species/{species.id}", "method": "GET"},
+            "migration": {
+                "href": f"/species/{species.id}/migration?month={current_month}",
+                "method": "GET",
+            },
+            "vessels": {"href": f"/vessels/species/{species.id}", "method": "GET"},
+            "overlap": {"href": f"/overlap?species_id={species.id}", "method": "GET"},
+        },
     }
-    resp = SpeciesResponse.model_validate(species)
-    resp.links = links
-    return resp
 
 
 # ─────────────────────────────────────────────

@@ -19,6 +19,32 @@
     margin: 0;
     font-family: var(--font-cal);
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+.reveal-frame {
+  overflow: hidden;
+  position: relative;
+  display: block;
+}
+
+.reveal-element {
+  display: block;
+  transform: translateY(105%);
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-active .reveal-element {
+  transform: translateY(0%);
+}
+
+.logo-brand-tint {
+  /* Targets #003a95 */
+  filter: brightness(0) saturate(100%) invert(14%) sepia(95%) saturate(3034%)
+    hue-rotate(212deg) brightness(93%) contrast(105%);
 }
 
 @keyframes oceanFloat {
@@ -75,6 +101,45 @@
 }
 
 .glass-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0) 30%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: destination-out;
+  pointer-events: none;
+}
+
+.glass-card-compact {
+  min-height: auto;
+  transition: all 0.5s ease;
+  position: relative;
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.03) 100%
+    )
+    padding-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(32px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  overflow: visible;
+}
+
+.glass-card-compact::before {
   content: "";
   position: absolute;
   inset: -1px;
@@ -198,5 +263,21 @@
   100% {
     transform: scale(1.5);
     opacity: 0;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(120%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (width <= 768px) {
+  .title {
+    font-size: 5.5rem;
+    line-height: 70%;
   }
 }

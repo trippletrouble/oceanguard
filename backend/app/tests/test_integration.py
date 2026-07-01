@@ -370,9 +370,11 @@ async def test_species_hateoas(client, db_session):
     data_list = res_list.json()
     assert len(data_list) > 0
     for item in data_list:
-        assert "_links" in item
-        links = item["_links"]
+        assert "links" in item
+        links = item["links"]
         assert "self" in links
+        assert "href" in links["self"]
+        assert "method" in links["self"]
         assert "migration" in links
         assert "vessels" in links
         assert "overlap" in links
@@ -383,10 +385,11 @@ async def test_species_hateoas(client, db_session):
     res_detail = await client.get(f"/species/{species_id}")
     assert res_detail.status_code == 200
     data_detail = res_detail.json()
-    assert "_links" in data_detail
-    links = data_detail["_links"]
-    assert links["self"] == f"/species/{species_id}"
-    assert links["migration"] == f"/species/{species_id}/migration"
+    assert "links" in data_detail
+    links = data_detail["links"]
+    assert links["self"]["href"] == f"/species/{species_id}"
+    assert links["self"]["method"] == "GET"
+    assert "migration" in links
 
 
 @pytest.mark.asyncio
