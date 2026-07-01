@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, List, Optional
 
 class ReportCreate(BaseModel):
@@ -22,5 +22,4 @@ class ReportResponse(BaseModel):
     snapshot: Dict[str, Any]
     created_at: Any
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

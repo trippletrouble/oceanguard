@@ -18,8 +18,29 @@ router = APIRouter()
         400: {"description": "Ungültige BBox"}
     }
 )
-async def get_vessels():
+async def get_vessels(
+    bbox: str | None = Query(None, description="BBox boundaries: min_lat,min_lng,max_lat,max_lng")
+):
     vessels = ais_service.get_all_vessels()
+    
+    if bbox:
+        try:
+            parts = [float(p.strip()) for p in bbox.split(",")]
+            if len(parts) != 4:
+                raise ValueError()
+            min_lat, min_lng, max_lat, max_lng = parts
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid bbox format. Use min_lat,min_lng,max_lat,max_lng"
+            )
+            
+        vessels = [
+            v for v in vessels
+            if v.get("lat") is not None and v.get("lng") is not None and
+            min_lat <= v["lat"] <= max_lat and min_lng <= v["lng"] <= max_lng
+        ]
+
     return {
         "vessels": vessels,
         "count": len(vessels)
@@ -86,32 +107,3 @@ async def get_vessel(mmsi: int):
     return vessel
 
 # @router.get("/species/{species_id}/debug")
-# async def debug_species(species_id: str):
-
-#     zones = obis_service.get_zones(species_id)
-
-#     if not zones:
-#         return {
-#             "species_id": species_id,
-#             "error": "Unknown species"
-#         }
-
-#     month = datetime.now().month
-#     zone = zones.get(month)
-#     if not zone:
-#         return {
-#             "species_id": species_id,
-#             "error": f"No zone data for month {month}"
-#         }
-    
-#     center = zone.get("center")
-
-#     vessels = ais_service.get_vessels_for_species(species_id)
-    
-#     return {
-#         "species_id": species_id,
-#         "vessel_count": len(vessels),
-#         "zone": zone,
-#         "center": center,
-#         "vessels": vessels
-#     }

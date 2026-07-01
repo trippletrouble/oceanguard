@@ -78,17 +78,3 @@ async def sync_user(
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-
-@router.post(
-    "/logout",
-    summary="Logout",
-    description="Loggt den User aus. **Rolle: User/Admin.**",
-    status_code=204,
-    responses={
-        204: {"description": "Erfolgreich ausgeloggt"},
-        401: {"description": "Nicht eingeloggt"}
-    }
-)
-async def logout(current_user: User = Depends(get_current_user)):
-    # Logout passiert client-seitig via Firebase signOut()
-    return

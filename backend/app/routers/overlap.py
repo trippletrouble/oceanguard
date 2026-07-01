@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.services.overlap_service import compute_overlap, compute_single_score
+from app.services.overlap_service import compute_overlap, compute_single_score, get_best_evaluation_for_vessel
 from app.services.ais_service import ais_service
 from app.services.obis_service import obis_service
 from app.services.meteo_service import get_sst
@@ -83,27 +83,20 @@ async def get_overlap_for_vessel(
     if not month_zones:
         raise HTTPException(status_code=404, detail=f"No zone bounds mapped for month {month}")
 
-    best_evaluation = None
-    max_score = -1.0
-
+    # Get SST once per zone
+    zone_ssts = []
     for zone in month_zones:
-        center = zone.get("center", {})
-        c_lat = center.get("lat")
-        c_lng = center.get("lng")
-
+        c_lat = zone.get("center", {}).get("lat")
+        c_lng = zone.get("center", {}).get("lng")
         sst = None
         try:
             meteo_data = await get_sst(c_lat, c_lng)
             sst = meteo_data.get("sea_surface_temperature")
         except Exception:
             pass
+        zone_ssts.append(sst)
 
-        evaluation = compute_single_score(vessel, zone, sst, species_record)
-
-        # Keep the best score found among all clusters
-        if evaluation and evaluation.get("score", -1) > max_score:
-            max_score = evaluation["score"]
-            best_evaluation = evaluation
+    best_evaluation = get_best_evaluation_for_vessel(vessel, month_zones, zone_ssts, species_record)
 
     if not best_evaluation:
         raise HTTPException(status_code=400, detail="Could not calculate score for vessel.")
