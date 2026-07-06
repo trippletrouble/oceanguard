@@ -16,6 +16,22 @@ interface DashboardProps {
   trackerData: any[];
   isLiveStatusExpanded: boolean;
   setIsLiveStatusExpanded: (open: boolean) => void;
+  threatFilter: "all" | "warning" | "critical";
+  setThreatFilter: (value: "all" | "warning" | "critical") => void;
+  activityFilter: "all" | "stationary" | "slow" | "transit";
+  setActivityFilter: (value: "all" | "stationary" | "slow" | "transit") => void;
+  vesselTypeFilter:
+    | "target"
+    | "all"
+    | "fishing"
+    | "unknown";
+  setVesselTypeFilter: (
+    value:
+      | "target"
+      | "all"
+      | "fishing"
+      | "unknown",
+  ) => void;
 }
 
 export default function SidebarDashboard({
@@ -30,6 +46,12 @@ export default function SidebarDashboard({
   trackerData,
   isLiveStatusExpanded,
   setIsLiveStatusExpanded,
+  threatFilter,
+  setThreatFilter,
+  activityFilter,
+  setActivityFilter,
+  vesselTypeFilter,
+  setVesselTypeFilter,
 }: DashboardProps) {
   const getFullSpeciesName = (region: RegionData) => {
     return `${region.commonSpeciesName} (${region.scientificSpeciesName})`;
@@ -130,11 +152,80 @@ export default function SidebarDashboard({
           />
         </div>
 
+        <div className="grid grid-cols-1 gap-3">
+          <div className="relative w-full">
+            <select
+              value={threatFilter}
+              onChange={(e) =>
+                setThreatFilter(e.target.value as "all" | "warning" | "critical")
+              }
+              className="w-full p-2 pr-10 border border-slate-400 rounded-xl text-[15px] outline-none cursor-pointer bg-slate-800 text-white font-medium appearance-none"
+            >
+              <option value="all">All Threat Levels</option>
+              <option value="warning">Warning + Critical</option>
+              <option value="critical">Critical Only</option>
+            </select>
+            <ChevronDown
+              size={16}
+              className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"
+            />
+          </div>
+
+          <div className="relative w-full">
+            <select
+              value={activityFilter}
+              onChange={(e) =>
+                setActivityFilter(
+                  e.target.value as "all" | "stationary" | "slow" | "transit",
+                )
+              }
+              className="w-full p-2 pr-10 border border-slate-400 rounded-xl text-[15px] outline-none cursor-pointer bg-slate-800 text-white font-medium appearance-none"
+            >
+              <option value="all">All Speeds</option>
+              <option value="stationary">Stationary</option>
+              <option value="slow">Slow / Active</option>
+              <option value="transit">Transit</option>
+            </select>
+            <ChevronDown
+              size={16}
+              className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"
+            />
+          </div>
+
+          <div className="relative w-full">
+            <select
+              value={vesselTypeFilter}
+              onChange={(e) =>
+                setVesselTypeFilter(
+                  e.target.value as
+                    | "target"
+                    | "all"
+                    | "fishing"
+                    | "unknown",
+                )
+              }
+              className="w-full p-2 pr-10 border border-slate-400 rounded-xl text-[15px] outline-none cursor-pointer bg-slate-800 text-white font-medium appearance-none"
+            >
+              <option value="target">Relevant Types</option>
+              <option value="all">All Vessel Types</option>
+              <option value="fishing">Fishing</option>
+              <option value="unknown">Unknown</option>
+            </select>
+            <ChevronDown
+              size={16}
+              className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300"
+            />
+          </div>
+        </div>
+
         <button
           onClick={() => {
             setSelectedFish(null);
             setFilterSeaIndex(0);
             setSeaIndex(0);
+            setThreatFilter("all");
+            setActivityFilter("all");
+            setVesselTypeFilter("target");
           }}
           className="w-full mt-1 py-2 px-3 border border-slate-600 bg-slate-800/20 hover:bg-slate-700/40 rounded-xl text-sm tracking-widest text-white transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
