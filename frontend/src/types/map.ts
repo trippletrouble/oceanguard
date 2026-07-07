@@ -7,6 +7,11 @@ export interface Vessel {
   lng: number;
   score: number | null;
   level: "CRITICAL" | "WARNING" | "LOW";
+  sog?: number;
+  distance_km?: number;
+  shiptype?: number | string | null;
+  category?: string;
+  classification_source?: string;
 }
 
 export interface RegionData {

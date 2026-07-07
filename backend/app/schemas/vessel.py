@@ -5,6 +5,11 @@ class VesselResponse(BaseModel):
     mmsi: int
     name: Optional[str] = None
 
+    shiptype: Optional[int | str] = None
+    category: Optional[str] = None
+    is_public: Optional[bool] = None
+    classification_source: Optional[str] = None
+
     lat: Optional[float] = None
     lng: Optional[float] = None
 

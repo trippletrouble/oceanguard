@@ -17,6 +17,15 @@ export default function MapPage() {
   const [filterSeaIndex, setFilterSeaIndex] = useState<number>(0);
   const [selectedFish, setSelectedFish] = useState<string | null>(null);
 
+  const [threatFilter, setThreatFilter] = useState<"all" | "warning" | "critical">("all");
+  const [activityFilter, setActivityFilter] = useState<"all" | "stationary" | "slow" | "transit">("all");
+  const [vesselTypeFilter, setVesselTypeFilter] = useState<
+    | "target"
+    | "all"
+    | "fishing"
+    | "unknown"
+  >("target");
+
   const currentMonth = new Date().getMonth() + 1;
 
   const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery({
@@ -179,6 +188,11 @@ export default function MapPage() {
               ...(v.distance_km !== undefined && {
                 distance_km: Number(v.distance_km),
               }),
+              ...(v.shiptype !== undefined && { shiptype: v.shiptype }),
+              ...(v.category !== undefined && { category: v.category }),
+              ...(v.classification_source !== undefined && {
+                classification_source: v.classification_source,
+              }),
             } as Vessel;
           });
 
@@ -189,6 +203,56 @@ export default function MapPage() {
     refetchInterval: 10000,
     enabled: REGIONS_DATA.length > 0,
   });
+
+
+  const filteredTrackerData = useMemo(() => {
+    if (!trackerData) return trackerData;
+
+    return trackerData.map((entry: any) => {
+      const vessels = entry.vessels.filter((v: any) => {
+        if (threatFilter === "critical" && v.score < 0.7) return false;
+        if (threatFilter === "warning" && v.score < 0.4) return false;
+
+        const sog = v.sog ?? 0;
+
+        if (activityFilter === "stationary" && sog >= 0.5) return false;
+        if (activityFilter === "slow" && (sog < 0.5 || sog > 6)) return false;
+        if (activityFilter === "transit" && sog <= 6) return false;
+
+        const category = String(v.category ?? "Unknown").toLowerCase();
+        const targetCategories = new Set(["fishing", "unknown"]);
+
+        if (vesselTypeFilter === "target" && !targetCategories.has(category)) {
+          return false;
+        }
+
+        if (
+          vesselTypeFilter !== "target" &&
+          vesselTypeFilter !== "all" &&
+          category !== vesselTypeFilter
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+      
+      return {
+        ...entry,
+        vessels,
+        stats: {
+          ...entry.stats,
+          vessels_tracked_count: vessels.length,
+          maximum_threat_score: vessels.length
+            ? Math.max(...vessels.map((v: any) => v.score ?? 0))
+            : 0,
+          average_threat_score: vessels.length
+            ? vessels.reduce((sum: number, v: any) => sum + (v.score ?? 0), 0) / vessels.length
+            : 0,
+        },
+      };
+    });
+  }, [trackerData, threatFilter, activityFilter, vesselTypeFilter]);
 
   const handleNext = () => {
     setSelectedFish(null);
@@ -244,7 +308,7 @@ export default function MapPage() {
       <MapCanvas
         regionsData={REGIONS_DATA}
         zonesData={zonesData}
-        trackerData={trackerData}
+        trackerData={filteredTrackerData}
         seaIndex={seaIndex}
         filterSeaIndex={filterSeaIndex}
         selectedFish={selectedFish}
@@ -268,9 +332,15 @@ export default function MapPage() {
           selectedFish={selectedFish}
           setSelectedFish={setSelectedFish}
           regionsData={REGIONS_DATA}
-          trackerData={trackerData || []}
+          trackerData={filteredTrackerData || []}
           isLiveStatusExpanded={isLiveStatusExpanded}
           setIsLiveStatusExpanded={setIsLiveStatusExpanded}
+          threatFilter={threatFilter}
+          setThreatFilter={setThreatFilter}
+          activityFilter={activityFilter}
+          setActivityFilter={setActivityFilter}
+          vesselTypeFilter={vesselTypeFilter}
+          setVesselTypeFilter={setVesselTypeFilter}
         />
 
         <div className="absolute w-fit top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full font-cal">

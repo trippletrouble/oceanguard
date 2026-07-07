@@ -105,5 +105,3 @@ async def get_vessel(mmsi: int):
         )
     
     return vessel
-
-# @router.get("/species/{species_id}/debug")

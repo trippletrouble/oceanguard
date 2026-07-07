@@ -62,6 +62,9 @@ def compute_single_score(vessel: dict, zone: dict, sst: float | None, species: S
     return {
         "mmsi": mmsi,
         "vessel_name": vessel.get("name", "Unknown"),
+        "shiptype": vessel.get("shiptype"),
+        "category": vessel.get("category"),
+        "classification_source": vessel.get("classification_source"),
         "lat": v_lat,
         "lng": v_lng,
         "sog": v_sog,
