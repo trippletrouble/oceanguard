@@ -65,7 +65,7 @@ class OBISService:
 
         for attempt in range(self.max_retries):
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                async with httpx.AsyncClient(timeout=45.0) as client:
                     response = await client.get(self.BASE_URL, params=params)
 
                     # Error 429: Too Many Requests
@@ -252,7 +252,7 @@ class OBISService:
             config = self.SPECIES_CONFIG.get(species_id)
             if not config:
                 logger.error(f"Invalid species ID: {species_id} not found in SPECIES_CONFIG")
-                return
+                return False
 
             occurrences = await self.fetch_occurrences(
                 scientific_name=config["name"],
@@ -260,29 +260,48 @@ class OBISService:
             )
 
             if not occurrences:
-                return
+                logger.warning(f"No OBIS occurrences found for {species_id}")
+                return False
 
             try:
                 zones = await self.calculate_zones(species_id, occurrences)
                 if not zones:
-                    return
+                    logger.warning(f"No zones calculated for {species_id}")
+                    return False
 
                 self._zone_cache[species_id] = zones
+                logger.info(f"✅ {species_id}: Loaded successfully ({len(occurrences)} sightings)")
+                return True
 
             except Exception as e:
                 logger.critical(f"Zone Calculation Crash Prevented for {species_id}: {type(e).__name__}: {str(e)}")
-                return
+                return False
 
         except asyncio.CancelledError:
             logger.warning(f"Zone refresh for {species_id} was cancelled")
+            return False
         except Exception as e:
             logger.critical(
                 f"Complete Crash Prevention During Zone Refresh for {species_id}: {type(e).__name__}: {str(e)}")
+            return False
 
     async def initialize_cache(self):
         logger.info("Starting OBIS cache warmup...")
         tasks = [self.refresh_zones(species_id) for species_id in self.SPECIES_CONFIG.keys()]
-        await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Log summary
+        success_count = sum(1 for r in results if r is True)
+        fail_count = sum(1 for r in results if r is False)
+        exception_count = sum(1 for r in results if isinstance(r, Exception))
+        
+        if exception_count > 0 or fail_count > 0:
+            logger.warning(f"OBIS Service Ready: {success_count}/{len(results)} species loaded successfully. "
+                          f"{fail_count + exception_count} failed - some fish zones will not be visible on map.")
+        else:
+            logger.info(f"OBIS Service Ready: All {success_count} species loaded successfully.")
+        
+        self._is_ready = True
         self._is_ready = True
         logger.info("OBIS cache warmup complete. Service is ready.")
 

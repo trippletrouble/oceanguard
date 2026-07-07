@@ -1,13 +1,22 @@
 import json
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 import asyncio
+
+# Configure logging to show INFO and above
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
 
 import firebase_admin
 from firebase_admin import credentials
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 
 from app.database import init_db, async_session
 from app.models.species import Species
@@ -36,8 +45,22 @@ async def lifespan(app: FastAPI):
     setup_firebase()
 
     species_ids = list(obis_service.SPECIES_CONFIG.keys())
-    for species_id in species_ids:
-        await obis_service.refresh_zones(species_id)
+    logger.info(f"Loading {len(species_ids)} species migration data from OBIS...")
+    
+    # Load all species in parallel with increased timeout (45s)
+    tasks = [obis_service.refresh_zones(sid) for sid in species_ids]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Log summary
+    success_count = sum(1 for r in results if r is True)
+    fail_count = len(results) - success_count
+    
+    if fail_count > 0:
+        logger.warning(f"⚠️  {fail_count}/{len(results)} species failed to load. "
+                      f"Some fish zones will not be visible on the map.")
+        logger.warning(f"Failed species: {[sid for i, sid in enumerate(species_ids) if results[i] is not True]}")
+    else:
+        logger.info(f"✅ All {success_count} species loaded successfully!")
 
     #AIS stream
     asyncio.create_task(ais_service.connect_ais_stream())
