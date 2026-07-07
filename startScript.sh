@@ -34,31 +34,31 @@ echo "  Dort sehen Sie API-Verbindungen (AISstream, OBIS, Open-Meteo)"
 echo "  und eventuelle Fehlermeldungen während des Tests."
 echo ""
 
+BACKEND_SCRIPT="$SCRIPT_DIR/backend/start_backend.sh"
+
 # Detect OS and open terminal accordingly
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - Terminal.app oder iTerm2
-    if [ -d "/Applications/Utilities/Terminal.app" ]; then
-        osascript <<EOF
-tell application "Terminal"
+    # macOS - Terminal.app
+    osascript - "$BACKEND_SCRIPT" <<'EOF'
+on run argv
+    set backendScript to item 1 of argv
+    tell application "Terminal"
     activate
-    do script "cd '$SCRIPT_DIR/backend' && source .venv/bin/activate && echo '\\n============================================' && echo '  OceanGuard Backend - Fenster offen lassen!' && echo '============================================' && echo '' && echo 'Hier sehen Sie:' && echo '  - AISstream WebSocket-Verbindung' && echo '  - OBIS API Anfragen' && echo '  - Open-Meteo Marine API Anfragen' && echo '  - Datenbank-Operationen' && echo '  - Eventuelle Fehlermeldungen' && echo '' && echo 'Dieses Fenster NICHT schließen während Sie die Website testen!' && echo '' && uvicorn app.main:app --reload --port 8000"
-end tell
+        do script "bash " & quoted form of backendScript
+    end tell
+end run
 EOF
-    fi
 elif command -v gnome-terminal &> /dev/null; then
     # Linux mit GNOME
-    gnome-terminal --title="OceanGuard Backend" -- bash -c "cd '$SCRIPT_DIR/backend' && source .venv/bin/activate && echo '' && echo '============================================' && echo '  OceanGuard Backend - Fenster offen lassen!' && echo '============================================' && echo '' && echo 'Hier sehen Sie:' && echo '  - AISstream WebSocket-Verbindung' && echo '  - OBIS API Anfragen' && echo '  - Open-Meteo Marine API Anfragen' && echo '  - Datenbank-Operationen' && echo '  - Eventuelle Fehlermeldungen' && echo '' && echo 'Dieses Fenster NICHT schließen während Sie die Website testen!' && echo '' && uvicorn app.main:app --reload --port 8000; exec bash"
+    gnome-terminal --title="OceanGuard Backend" -- bash -c "bash '$BACKEND_SCRIPT'; exec bash"
 elif command -v xterm &> /dev/null; then
     # Fallback zu xterm
-    xterm -title "OceanGuard Backend" -e "bash -c 'cd \\\"$SCRIPT_DIR/backend\\\" && source .venv/bin/activate && echo \\\"============================================\\\" && echo \\\"  OceanGuard Backend - Fenster offen lassen!\\\" && echo \\\"============================================\\\" && echo \\\"\\\" && echo \\\"Hier sehen Sie:\\\" && echo \\\"  - AISstream WebSocket-Verbindung\\\" && echo \\\"  - OBIS API Anfragen\\\" && echo \\\"  - Open-Meteo Marine API Anfragen\\\" && echo \\\"  - Datenbank-Operationen\\\" && echo \\\"  - Eventuelle Fehlermeldungen\\\" && echo \\\"\\\" && echo \\\"Dieses Fenster NICHT schließen während Sie die Website testen!\\\" && echo \\\"\\\" && uvicorn app.main:app --reload --port 8000; exec bash'"
+    xterm -title "OceanGuard Backend" -e "bash -c 'bash \"'$BACKEND_SCRIPT'\"; exec bash'"
 else
     # Wenn kein separates Fenster möglich, im gleichen Fenster (background)
     echo "Hinweis: Kein unterstütztes Terminal gefunden. Backend läuft im Hintergrund."
-    cd backend
-    source .venv/bin/activate
-    uvicorn app.main:app --reload --port 8000 &
+    bash "$BACKEND_SCRIPT" &
     BACKEND_PID=$!
-    cd ..
     sleep 2
 fi
 
