@@ -27,7 +27,18 @@ router = APIRouter()
     summary="Alle aktiven Fischarten abrufen",
     description="Gibt alle aktiven Arten mit relativen HATEOAS-Links zurück. Unterstützt ETag Caching. **Rolle: Gast.**",
     responses={
-        200: {"description": "Liste aller aktiven Arten mit HATEOAS-Links und Caching-Header"}
+        200: {
+            "description": "Liste aller aktiven Arten mit HATEOAS-Links und Caching-Headern",
+            "headers": {
+                "ETag": {
+                    "description": "Weak entity tag for conditional requests (e.g., W/\"abc123...\")"
+                },
+                "Cache-Control": {
+                    "description": "public, max-age=86400 (cacheable for 24 hours)"
+                }
+            }
+        },
+        304: {"description": "Not Modified - client can use cached version (If-None-Match matched)"}
     }
 )
 async def get_all_species(
@@ -102,7 +113,18 @@ async def get_all_species(
     summary="Migrationszonen abrufen",
     description="Gibt die berechnete Migrationszone für einen Monat zurück. Unterstützt ETag Caching. **Rolle: Gast.**",
     responses={
-        200: {"description": "GeoJSON Feature mit Caching-Header"},
+        200: {
+            "description": "GeoJSON Feature mit Caching-Headern",
+            "headers": {
+                "ETag": {
+                    "description": "Weak entity tag for conditional requests (e.g., W/\"abc123...\")"
+                },
+                "Cache-Control": {
+                    "description": "public, max-age=86400 (cacheable for 24 hours)"
+                }
+            }
+        },
+        304: {"description": "Not Modified - client can use cached version (If-None-Match matched)"},
         400: {"description": "Ungültiger Monat"},
         404: {"description": "Art nicht gefunden"}
     }

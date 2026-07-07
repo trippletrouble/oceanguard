@@ -140,19 +140,6 @@ Prüft, ob Fische wahrscheinlich anwesend sind – basierend auf der aktuellen M
 
 ---
 
-## API-Endpoints
-
-| Endpoint | Beschreibung |
-|---|---|
-| `GET /species/` | Liste aller unterstützten, aktiven Arten |
-| `GET /species/{species_id}/migration?month=` | Saisonale Verbreitungszone (GeoJSON) |
-| `GET /vessels` | Aktive Schiffspositionen (ohne Filter) |
-| `GET /overlap?species_id=&month=` | **Kern:** Overlap-Score Berechnung für eine Fischart |
-| `GET /marine-conditions?lat=&lng=` | Meeresbedingungen an einem Koordinatenpunkt |
-| `GET /alerts?species_id=` | Aktive Warnungen für eine Fischart |
-
----
-
 ## Fokus-Arten (MVP)
 
 | Art | Wissenschaftl. Name | Region | Opt. Temp. | IUCN-Status |
@@ -182,5 +169,58 @@ Prüft, ob Fische wahrscheinlich anwesend sind – basierend auf der aktuellen M
 | [OBIS](https://api.obis.org/v3/) | REST | Keine |
 | [AISstream](https://aisstream.io/) | WebSocket | Kostenloser API-Key |
 | [Open-Meteo Marine](https://marine-api.open-meteo.com/v1/marine) | REST | Keine |
+
+---
+
+## API-Dokumentation
+
+OceanGuard bietet die API-Dokumentation in zwei Formaten:
+
+| Format | Ort | Beschreibung |
+|--------|-----|--------------|
+| **OpenAPI YAML** | `documentation/openapi.yaml` | Maschinenlesbare Spezifikation (vollständige OpenAPI 3.1.0 Definition) |
+| **Interaktive HTML** | http://localhost:8000/docs | Swagger UI – läuft mit dem Backend, ermöglicht direktes Testen aller Endpoints |
+
+> **Hinweis:** Die Swagger UI unter `/docs` ist die generierte HTML-Version der API-Beschreibung. Sie bietet:
+> - Vollständige Endpoint-Dokumentation
+> - Interaktives Testen mit echten Requests
+> - Request/Response-Beispiele
+> - Authentifizierungsunterstützung (Bearer Token)
+
+---
+
+## API-Endpoints
+
+| Endpoint | Beschreibung |
+|---|---|
+| `GET /species/` | Liste aller unterstützten, aktiven Arten |
+| `GET /species/{species_id}/migration?month=` | Saisonale Verbreitungszone (GeoJSON) |
+| `GET /vessels` | Aktive Schiffspositionen (ohne Filter) |
+| `GET /overlap?species_id=&month=` | **Kern:** Overlap-Score Berechnung für eine Fischart |
+| `GET /marine-conditions?lat=&lng=` | Meeresbedingungen an einem Koordinatenpunkt |
+| `GET /alerts?species_id=` | Aktive Warnungen für eine Fischart |
+
+---
+
+### ETag Caching Beispiel
+
+Demonstration des ETag-basierten HTTP-Cachings mit curl:
+
+```bash
+# Erster Request – vollständige Antwort + ETag Header
+curl -i http://localhost:8000/species/
+# Antwort enthält: ETag: W/"abc123..."
+
+# Zweiter Request mit If-None-Match – Server antwortet mit 304 Not Modified
+curl -i -H 'If-None-Match: W/"abc123..."' http://localhost:8000/species/
+# Antwort: HTTP 304 Not Modified (kein Body, Bandbreite gespart)
+```
+
+Dies demonstriert zeitbasiertes Caching (`Cache-Control: max-age=86400`, 24 Stunden) 
+kombiniert mit validierungsbasiertem Caching (ETag/If-None-Match).
+
+**Getestete Endpoints mit ETag-Support:**
+- `GET /species/` – Liste aller Fischarten
+- `GET /species/{species_id}/migration?month=` – Migrationszonen einer Art
 
 ---
