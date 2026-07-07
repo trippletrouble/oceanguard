@@ -1,3 +1,61 @@
+## Installation & Einrichtung
+
+### Voraussetzungen
+
+- **Python 3.8+** ([Download](https://www.python.org/downloads/))
+- **Node.js 18+** ([Download](https://nodejs.org/))
+
+---
+
+### Einmalige Einrichtung (nur beim ersten Start)
+
+#### Windows
+
+```powershell
+.\backend\setup.ps1
+.\frontend\setup.ps1
+```
+
+#### macOS/Linux
+
+```bash
+chmod +x backend/setup.sh frontend/setup.sh startScript.sh
+./backend/setup.sh
+./frontend/setup.sh
+```
+
+Dies führt folgende Schritte aus:
+- Erstellt die Python virtuelle Umgebung und installiert Backend-Abhängigkeiten
+- Installiert Node.js-Pakete für das Frontend
+- Dauert ca. 2-3 Minuten
+
+---
+
+### Anwendung starten
+
+Nach der Einrichtung verwenden Sie das Start-Skript, um Backend und Frontend zu starten:
+
+#### Windows
+
+Doppelklick auf `start.ps1` oder in PowerShell ausführen:
+
+```powershell
+.\start.ps1
+```
+
+#### macOS/Linux
+
+```bash
+./startScript.sh
+```
+
+Die Anwendung startet und zeigt folgende URLs an:
+- **Frontend:** http://localhost:5173 (Hauptanwendung)
+- **Backend API:** http://localhost:8000
+- **API Dokumentation:** http://localhost:8000/docs (interaktive Swagger UI)
+
+---
+
 # 🌊 OceanGuard
 
 **Echtzeit-Überwachung von Fischereifahrzeugen in Fisch-Migrationszonen.**
@@ -117,12 +175,172 @@ Prüft, ob Fische wahrscheinlich anwesend sind – basierend auf der aktuellen M
 
 ---
 
-## Externe APIs
+## Installation & Einrichtung
 
-| API | Typ | Auth |
-|---|---|---|
-| [OBIS](https://api.obis.org/v3/) | REST | Keine |
-| [AISstream](https://aisstream.io/) | WebSocket | Kostenloser API-Key |
-| [Open-Meteo Marine](https://marine-api.open-meteo.com/v1/marine) | REST | Keine |
+### Voraussetzungen
+
+- **Python 3.8+** ([Download](https://www.python.org/downloads/))
+- **Node.js 18+** ([Download](https://nodejs.org/))
+
+---
+
+### Einmalige Einrichtung (nur beim ersten Start)
+
+#### Windows
+
+```powershell
+.\backend\setup.ps1
+.\frontend\setup.ps1
+```
+
+#### macOS/Linux
+
+```bash
+chmod +x backend/setup.sh frontend/setup.sh startScript.sh
+./backend/setup.sh
+./frontend/setup.sh
+```
+
+Dies führt folgende Schritte aus:
+- Erstellt die Python virtuelle Umgebung und installiert Backend-Abhängigkeiten
+- Installiert Node.js-Pakete für das Frontend
+- Dauert ca. 2-3 Minuten
+
+---
+
+### Anwendung starten
+
+Nach der Einrichtung verwenden Sie das Start-Skript, um Backend und Frontend zu starten:
+
+#### Windows
+
+Doppelklick auf `start.ps1` oder in PowerShell ausführen:
+
+```powershell
+.\start.ps1
+```
+
+#### macOS/Linux
+
+```bash
+./startScript.sh
+```
+
+**Wichtig:** Beim Start wird ein separates Fenster für das Backend geöffnet, damit Sie Backend-Logs, API-Fehler und Verbindungsprobleme direkt sehen können. Das Frontend läuft im ursprünglichen Terminal.
+
+Die Anwendung zeigt folgende URLs an:
+- **Frontend:** http://localhost:5173 (Hauptanwendung)
+- **Backend API:** http://localhost:8000
+- **API Dokumentation:** http://localhost:8000/docs (interaktive Swagger UI)
+
+Das Backend-Fenster zeigt:
+- ✅ Uvicorn Startup-Meldung ("Application startup complete")
+- ✅ AISstream WebSocket-Verbindungsstatus
+- ✅ Datenbank- und API-Fehler in Echtzeit
+
+**Beenden:**
+- Frontend: `Strg+C` im Terminal
+- Backend: Schließen Sie das Backend-Fenster oder drücken Sie `Strg+C` darin
+
+---
+
+### Anwendung testen
+
+1. Öffnen Sie Ihren Browser und navigieren Sie zu **http://localhost:5173**
+2. Das Haupt-Dashboard sollte mit Live-Schiffsverfolgung laden
+3. Für API-Tests besuchen Sie **http://localhost:8000/docs** für interaktive Dokumentation
+4. Alle Endpoints können direkt über die Swagger UI getestet werden
+
+---
+
+## Fehlerbehebung
+
+### Port bereits belegt
+
+Bei "Port already in use"-Fehlern:
+
+**Windows:**
+```powershell
+# Prozess auf Port 8000 beenden
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+
+# Prozess auf Port 5173 beenden
+netstat -ano | findstr :5173
+taskkill /PID <PID> /F
+```
+
+**macOS/Linux:**
+```bash
+# Prozess auf Port 8000 beenden
+lsof -ti:8000 | xargs kill -9
+
+# Prozess auf Port 5173 beenden
+lsof -ti:5173 | xargs kill -9
+```
+
+Danach die Anwendung neu starten.
+
+---
+
+### Python nicht gefunden
+
+Stellen Sie sicher, dass Python installiert und zum PATH hinzugefügt wurde:
+- **Windows:** Python neu installieren mit aktivierter Option "Add Python to PATH"
+- **macOS:** Über Homebrew installieren: `brew install python@3.11`
+- **Linux:** Über Paketmanager installieren: `sudo apt install python3 python3-pip python3-venv`
+
+---
+
+### Node.js nicht gefunden
+
+Installieren Sie Node.js von [nodejs.org](https://nodejs.org/) (LTS-Version empfohlen).
+
+---
+
+### Berechtigungsprobleme (macOS/Linux)
+
+Falls Setup-Skripte Berechtigungsfehler melden:
+
+```bash
+chmod +x backend/setup.sh frontend/setup.sh startScript.sh
+```
+
+---
+
+### Probleme mit der virtuellen Umgebung
+
+Falls die Backend virtuelle Umgebung Probleme hat:
+
+```bash
+# Löschen und neu erstellen
+rm -rf backend/.venv
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+---
+
+### Fehlende Konfigurationsdateien
+
+Erforderliche `.env`-Dateien werden separat bereitgestellt. Stellen Sie sicher, dass diese existieren in:
+- `backend/.env`
+- `frontend/.env`
+
+Bei Bedarf von `.env.example` kopieren und erforderliche Werte eintragen.
+
+---
+
+### Umlaut/Sonderzeichen werden falsch angezeigt
+
+Falls deutsche Umlaute (ä, ö, ü) im Windows PowerShell falsch dargestellt werden:
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
+Das Start-Skript sollte dies automatisch korrigieren. Falls Probleme bestehen, fügen Sie diese Zeile am Anfang von `start.ps1` hinzu.
 
 ---
