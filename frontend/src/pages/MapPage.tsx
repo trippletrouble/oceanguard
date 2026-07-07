@@ -31,11 +31,19 @@ export default function MapPage() {
   const { data: rawSpecies, isLoading: isSpeciesLoading } = useQuery({
     queryKey: ["all-species"],
     queryFn: fetchAllSpecies,
-    staleTime: 60 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 
+  const activeSpecies = useMemo(() => {
+    return rawSpecies?.filter((sp: any) => sp.active) || [];
+  }, [rawSpecies]);
+
   const { data: rawZones } = useQuery({
-    queryKey: ["migration-zones", currentMonth],
+    queryKey: [
+      "migration-zones",
+      currentMonth,
+      activeSpecies.map((s) => s.id).join(","),
+    ],
     queryFn: async () => {
       if (!rawSpecies) return [];
       const activeSpecies = rawSpecies.filter((sp: any) => sp.active);
@@ -51,8 +59,8 @@ export default function MapPage() {
         }),
       );
     },
-    staleTime: 15 * 60 * 1000,
-    enabled: !!rawSpecies && rawSpecies.length > 0,
+    staleTime: 0,
+    enabled: activeSpecies.length > 0,
   });
 
   const REGIONS_DATA: RegionData[] = useMemo(() => {
