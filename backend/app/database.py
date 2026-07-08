@@ -4,7 +4,7 @@ from app.config import settings
 import json
 from pathlib import Path
 
-SQL_ECHO = True
+SQL_ECHO = False
 
 engine = create_async_engine(settings.database_url, echo=SQL_ECHO)
 async_session = async_sessionmaker(engine, expire_on_commit=False)

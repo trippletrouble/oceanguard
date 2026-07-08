@@ -4,11 +4,12 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import asyncio
 
-# Configure logging to show INFO and above
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s: %(message)s'
-)
+# Configure logging - suppress SQLAlchemy and HTTP client noise
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+# Suppress verbose logs from external libraries
+logging.getLogger('httpx').setLevel(logging.WARNING)  # Hide HTTP requests
+logging.getLogger('httpcore').setLevel(logging.WARNING)  # Hide HTTP connection details
 
 import firebase_admin
 from firebase_admin import credentials
