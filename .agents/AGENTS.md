@@ -95,10 +95,6 @@ To optimize work with agentic AI assistants (like Claude, Grok, or Gemini), this
 For reference, the external helper tools and plugins used by the agent in this workspace are hosted on GitHub:
 *   **Ponytail (Lazy Senior Dev Mode):** [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
 *   **CocoIndex-Code (Semantic Search CLI):** [cocoindex-io/cocoindex-code](https://github.com/cocoindex-io/cocoindex-code)
-*   **Firebase Agent Skills:** [firebase/agent-skills](https://github.com/firebase/agent-skills)
-*   **Chrome DevTools MCP:** [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp)
-*   **CocoIndex Core:** [cocoindex-io/cocoindex](https://github.com/cocoindex-io/cocoindex)
-*   **Science Skills:** [google-deepmind/science-skills](https://github.com/google-deepmind/science-skills)
 
 ---
 
