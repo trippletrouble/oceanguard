@@ -1,34 +1,57 @@
-## 1. Problemstellung
+## 1. Problemstellung & Herausforderungen (Detail)
 
-Jedes Jahr werden Millionen Tonnen Fisch während ihrer saisonalen Wanderungen gefangen – genau dann, wenn Fischpopulationen am verwundbarsten sind. Fischereifahrzeuge operieren häufig gezielt in Gebieten aktiver Fisch-Migration, was die ohnehin bedrohten Bestände weiter gefährdet.
+Die weltweiten Ozeane sind durch Überfischung, illegale Fischerei (IUU) und den unbeabsichtigten Beifang in sensiblen Habitaten akut bedroht. Besonders kritisch ist diese Situation für wandernde Fischpopulationen (z. B. pelagische Arten wie der Rote Thunfisch oder Schwertfisch). Während ihrer saisonalen Wanderungen konzentrieren sich die Tiere in spezifischen Korridoren oder Laichgebieten. Werden diese Zonen zeitgleich intensiv durch industrielle Fischereifahrzeuge befischt, kann dies zum Kollaps der gesamten Population führen.
 
-**Das Problem:** Es gibt derzeit keine einfache, öffentlich zugängliche Lösung, die in Echtzeit sichtbar macht, ob Fischereifahrzeuge in Gebieten aktiver Fisch-Migration operieren. Die Daten existieren – Schiffspositionen (AIS), Artensichtungen (OBIS), Meeresbedingungen (Open-Meteo) – aber sie sind isoliert und nicht miteinander verknüpft.
-
-**Die Konsequenz:** Weder Behörden, Naturschutzorganisationen noch die Öffentlichkeit können schnell erkennen, wo ein akutes Risiko für wandernde Fischpopulationen besteht.
+Bisher standen Überwachungsorganisationen, NGOs und staatliche Behörden vor folgenden **Herausforderungen**:
+1. **Isolierte Datensilos:** 
+   - **AIS (Automatic Identification System):** Liefert kontinuierliche, weltweite Schiffspositionen in Echtzeit. Die Rohdaten enthalten jedoch Millionen Nachrichten pro Tag und müssen aufwendig gefiltert werden, um Fischereifahrzeuge von Frachtern zu trennen und deren Aktivitätsstatus (Transit vs. aktiver Fischfang) zu analysieren.
+   - **OBIS (Ocean Biodiversity Information System):** Bietet historische Sichtungsdaten über Jahrzehnte hinweg. Diese Daten sind jedoch statisch, opportunistisch erhoben und weisen erhebliche Ungenauigkeiten auf (z. B. fehlerhafte Sichtungen auf dem Festland).
+   - **Marine Wetterdaten (SST - Sea Surface Temperature):** Die Wassertemperatur beeinflusst die tatsächliche Anwesenheit wechselwarmer (ektothermer) Fische maßgeblich. Wetter-APIs bieten diese Daten an, sie sind jedoch nicht mit aktuellen Schiffsbewegungen oder historischen Sichtungsdaten korreliert.
+2. **Fehlende Echtzeit-Risikoanalyse:** Es existierte keine Software, die diese drei komplexen Datenströme in Echtzeit miteinander verknüpft, um unmittelbare Bedrohungspotenziale für Schutzgebiete und Migrationskorridore zu berechnen und visuell aufzubereiten.
 
 ---
 
 ## 2. Unsere Lösung: OceanGuard
 
-OceanGuard ist eine Web-Applikation, die **drei isolierte Datenquellen kombiniert** und daraus einen neuartigen **Overlap-Score** berechnet. Dieser Score beantwortet eine einfache Frage:
+OceanGuard löst dieses Problem durch eine integrierte Web-Applikation, die als Brücke zwischen den isolierten Datenquellen fungiert. Das System führt Schiffsbewegungen, historische Artensichtungen und dynamische Meeresbedingungen in einem neuartigen **multiplikativen Overlap-Score** zusammen.
 
-> _„Fahren gerade Fischereifahrzeuge genau dort, wo Fische saisonal wandern – und wie kritisch ist das?"_
-
-### Wie funktioniert das?
-
-| Datenquelle | Was sie liefert | Rolle in OceanGuard |
-|---|---|---|
-| **OBIS API** | Historische Sichtungsdaten von Meerestieren | → Saisonale Verbreitungszonen ableiten |
-| **AISstream** | Echtzeit-Schiffspositionen weltweit | → Fischereifahrzeuge live tracken |
-| **Open-Meteo Marine API** | Aktuelle Meeresbedingungen | → Migrationswahrscheinlichkeit verifizieren |
-
-Unser eigener REST Web Service **kombiniert** diese Daten und berechnet den Overlap-Score – das ist der **Mehrwert**, der über reines Durchreichen hinausgeht.
+### 🛡️ Nutzen für Zielgruppen:
+- **Naturschutzorganisationen (NGOs):** Können in Echtzeit überwachen, ob geschützte Migrationszonen von Fischereifahrzeugen infiltriert werden, um Kampagnen gezielt auszurichten.
+- **Fischereibehörden & Küstenwachen:** Erhalten einen priorisierten Feed von Schiffen, die ein hohes Risiko aufweisen (🔴 Kritisch), um Kontrollen auf See effizienter zu planen.
+- **Wissenschaftler & Öffentlichkeit:** Gewinnen Einblick in das Zusammenspiel von Wassertemperaturen, saisonalen Fischwanderungen und Fischereiaktivitäten im Mittelmeer und Nordatlantik.
 
 ---
 
-## 3. Externe APIs im Detail
+## 3. Technischer Lösungsansatz
 
-### 3.1 OBIS – Ocean Biodiversity Information System
+Der technische Lösungsansatz von OceanGuard basiert auf einer strukturierten vierstufigen Datenverarbeitungs-Pipeline:
+
+```mermaid
+graph TD
+    A[OBIS API: Hist. Sichtungen] -->|1. DBSCAN Clustering| B(Monatliche Schutzzonen)
+    C[AISstream: Live-Schiffstrack] -->|2. Geo-BBox Filterung| D(Aktive Fischereischiffe)
+    E[Open-Meteo API: Live SST] -->|3. On-Demand Abfrage| F(Temperatur-Faktor T)
+    B & D & F -->|4. Overlap Engine| G[Multiplizierter Overlap-Score]
+    G -->|API Delivery| H[React-Client: Leaflet Map & Alerts]
+```
+
+### 1. Daten-Vorauswertung & Clustering (OBIS-Service):
+Beim Systemstart liest das Backend historische Vorkommensdaten für die konfigurierten Fischarten ein. Über ein **DBSCAN-Dichteverfahren (Density-Based Spatial Clustering)** auf der Erdkugel (Haversine-Metrik) werden Ausreißer gefiltert und geografisch getrennte Hotspots pro Kalendermonat berechnet. Eine integrierte Plausibilitätsprüfung filtert fehlerhafte Land-Koordinaten heraus, indem sie diese mit der Meeresoberflächentemperatur (SST) von Open-Meteo abgleicht (Landpunkte werfen einen 404-Fehler und werden verworfen).
+
+### 2. Echtzeit-Schiffsdatenstrom (AIS-Service):
+Das Backend baut eine dauerhafte, ausfallsichere WebSocket-Verbindung zu *AISstream.io* auf. Um die Netzwerklast zu minimieren, abonniert das Backend nur Bounding-Boxes, die den berechneten monatlichen Fisch-Migrationszonen entsprechen. Eingehende Schiffspositionen werden in einem hochperformanten In-Memory-Cache gehalten und gefiltert: Nur als Fischereifahrzeuge klassifizierte Schiffe werden weiterverarbeitet.
+
+### 3. Dynamische Korrelation (Overlap-Engine):
+Wird der Overlap-Score angefragt, führt das Backend eine **Tournament-Auswahl** durch. Ein Schiff wird gegen alle monatlichen Zonen der Fischart getestet. Das System fragt stündliche Wassertemperaturen (SST) für die Zonen-Zentren bei Open-Meteo an (gestützt durch einen 24-Stunden-Cache) und berechnet für jede Zone den Score. Das Schiff wird derjenigen Zone zugeordnet, bei der es das höchste Bedrohungspotenzial erzielt. Ein geografischer Tie-Breaker ordnet Schiffe außerhalb aller Zonen der am nächsten liegenden Zone zu.
+
+### 4. RESTful API Delivery & Visualisierung:
+Die Ergebnisse werden über eine FastAPI REST-Schnittstelle ausgeliefert. Um die REST-Architektur-Constraints vollständig zu erfüllen, sind die Ressourcen mit relativen HATEOAS-Folgelinks ausgestattet. Statische Anfragen werden über zeit- und ETag-basierte Cache-Header optimiert. Der React-Client stellt die Schutzzonen und Schiffe farbkodiert auf einer Leaflet-Karte dar und listet kritische Vorfälle in einem Echtzeit-Alerts-Feed.
+
+---
+
+## 4. Externe APIs im Detail
+
+### 4.1 OBIS – Ocean Biodiversity Information System
 
 - **Zweck:** Historische Sichtungsdaten von Meerestieren → daraus saisonale Verbreitungszonen ableiten
 - **Base-URL:** [https://api.obis.org/v3/](https://api.obis.org/v3/)
@@ -41,7 +64,7 @@ Unser eigener REST Web Service **kombiniert** diese Daten und berechnet den Over
 - **Auth:** Keine (komplett offen)
 - **Nutzung im Projekt:** Daten werden periodisch abgerufen und vorverarbeitet. Pro Art und Monat wird aus allen historischen Sichtungen der räumliche Mittelpunkt (Durchschnitt aller Lat/Lng-Werte) + ein Radius berechnet. Das ergibt eine **saisonale Verbreitungszone** (Kreis) pro Monat. Nicht Echtzeit.
 
-### 3.2 AISstream.io – Echtzeit-Schiffspositionen
+### 4.2 AISstream.io – Echtzeit-Schiffspositionen
 
 - **Zweck:** Live-Positionen von Schiffen weltweit via AIS-Transponder
 - **Verbindung:** WebSocket `wss://stream.aisstream.io/v0/stream`
@@ -50,7 +73,7 @@ Unser eigener REST Web Service **kombiniert** diese Daten und berechnet den Over
 - **Wichtige Logik:** `ShipType = 30` → Fischereifahrzeug. Geschwindigkeit < 5 Knoten → wahrscheinlich aktiv fischend
 - **Warum WebSocket statt REST?** Für Echtzeit-Schiffstracking wäre REST-Polling extrem ineffizient (tausende Requests/Minute). WebSocket liefert einen kontinuierlichen Datenstrom – ideal für Live-Positionen.
 
-### 3.3 Open-Meteo Marine Weather API
+### 4.3 Open-Meteo Marine Weather API
 
 - **Zweck:** Aktuelle Meeresbedingungen als Kontext-Layer
 - **Base-URL:** [https://marine-api.open-meteo.com/v1/marine](https://marine-api.open-meteo.com/v1/marine)
@@ -60,7 +83,7 @@ Unser eigener REST Web Service **kombiniert** diese Daten und berechnet den Over
 
 ---
 
-## 4. Eigener REST Web Service – Der Mehrwert
+## 5. Eigener REST Web Service – Der Mehrwert
 
 Unser Backend konsumiert die drei externen APIs und bietet dem Frontend über eine **saubere REST-Schnittstelle** aufbereitete, kombinierte Daten an.
 
@@ -167,18 +190,20 @@ $v$ = Geschwindigkeit des Schiffs in Knoten.
 
 $$T = \max\left(0,\; 1 - \frac{|T_{aktuell} - T_{mitte}|}{R}\right)$$
 
-- $T_{mitte}$ = Mitte des Optimalbereichs der Art (z.B. Roter Thun: $(15+25)/2 = 20°C$)
-- $R$ = halbe Breite des Optimalbereichs + Puffer (z.B. Roter Thun: $5 + 5 = 10°C$)
+- $T_{mitte}$ = Mitte des Optimalbereichs der Art (z.B. Roter Thun: `temp_mid = 22.0°C`)
+- $R$ = Bereichs-Divisor (z.B. Roter Thun: `temp_range = 10.0°C`)
 
-**Beispiel Roter Thun** (optimal 15–25°C, $T_{mitte} = 20°C$, $R = 10°C$):
+**Beispiel Roter Thun** (optimal 15–25°C, $T_{mitte} = 22.0°C$, $R = 10.0°C$):
 
 | Wassertemp. $T_{aktuell}$ | $T$ | Bedeutung |
 |---|---|---|
-| 20°C | 1.0 | Perfekte Temperatur, Thunfisch sehr wahrscheinlich hier |
-| 17°C | 0.7 | Noch im Optimalbereich |
-| 25°C | 0.5 | Rand des Optimalbereichs |
-| 28°C | 0.2 | Wird zu warm |
-| 30°C+ | 0.0 | Viel zu warm, kein Thunfisch hier |
+| 22°C | 1.0 | Perfekte Temperatur (Optimum), Thunfisch sehr wahrscheinlich hier |
+| 20°C | 0.8 | Noch sehr nah am Optimum |
+| 17°C | 0.5 | Im kühleren Optimalbereich |
+| 25°C | 0.7 | Im wärmeren Optimalbereich |
+| 28°C | 0.4 | Wird warm, außerhalb der Hauptzone |
+| 32°C+ | 0.0 | Viel zu warm, kein Thunfisch hier |
+| 12°C- | 0.0 | Viel zu kalt, kein Thunfisch hier |
 
 **Warum Temperatur als Plausibilitätsprüfung?** Fische sind wechselwarm (ektotherm). Ihr Stoffwechsel, ihre Fortpflanzung und ihre Nahrungssuche hängen direkt von der Wassertemperatur ab. Fische folgen buchstäblich den Isothermen – Linien gleicher Temperatur – durch den Ozean. Wenn die Wassertemperatur nicht zum Optimum der Art passt, sind die Fische mit hoher Wahrscheinlichkeit nicht dort, unabhängig von historischen Daten.
 
@@ -258,25 +283,79 @@ $$Score = 0.9 \times (0.7 \times 0.6 + 0.0 \times 0.4) = 0.9 \times 0.42 = 0.378
 
 ---
 
-## 5. Berechnung der saisonalen Verbreitungszonen
+## 6. Berechnung der saisonalen Verbreitungszonen (DBSCAN & Geofilterung)
 
-Die Verbreitungszone einer Art pro Monat wird aus OBIS-Sichtungsdaten wie folgt berechnet:
+Die Verbreitungszone einer Art pro Monat wurde ursprünglich über den einfachen geografischen Mittelpunkt berechnet. Dies führte jedoch bei Arten mit mehreren weit auseinanderliegenden Hotspots (z. B. Balearen und Sizilien) zu einem verfälschten Mittelpunkt im offenen Meer (z. B. auf Sardinien), wo keine Sichtungen vorlagen. Daher wurde die Berechnung auf **DBSCAN-Clustering (Density-Based Spatial Clustering of Applications with Noise)** umgestellt.
 
-1. Alle historischen Sichtungen der Art aus OBIS abrufen (z.B. über mehrere Jahre)
-2. Sichtungen nach **Monat** gruppieren
-3. Pro Monat den **Mittelpunkt** berechnen:
+### ⚙️ Der Berechnungs-Algorithmus im Detail:
 
-$$Lat_{mitte} = \frac{1}{n} \sum_{i=1}^{n} Lat_i \qquad Lng_{mitte} = \frac{1}{n} \sum_{i=1}^{n} Lng_i$$
+1. **Datenabruf:** Alle historischen Sichtungsdaten einer Art (inkl. Längen- und Breitengrad sowie Event-Datum) werden über die OBIS API geladen.
+2. **Monatliche Gruppierung:** Die Datensätze werden nach dem Kalendermonat (`1` bis `12`) gruppiert. Datensätze ohne gültiges Datum werden ignoriert.
+3. **DBSCAN-Clustering in Radianten:**
+   Die Koordinaten werden für die trigonometrische Berechnung in Radianten konvertiert. Das Clustering-Epsilon ($\epsilon$) wird dynamisch aus dem artspezifischen Radius ($radius\_km$) berechnet, um den Distanzschwellenwert auf der Erdkugel abzubilden:
+   
+   $$\epsilon = \frac{\text{Radius in km}}{6371.0}$$
+   
+   DBSCAN wird mit diesem $\epsilon$ und einem Schwellenwert von `min_samples = 3` auf der Haversine-Metrik ausgeführt. Dies filtert einzelnes Rauschen (Outliers) heraus und identifiziert dichte Vorkommens-Zentren.
+4. **Zentroiden-Berechnung:** Für jedes identifizierte dichte Cluster wird der arithmetische Mittelpunkt (Zentroid) aus den Breitengraden und Längengraden berechnet.
+5. **Wasser-Plausibilitätsprüfung (Landbereinigung):**
+   Da Sichtungen manchmal ungenaue Koordinaten besitzen, könnten Cluster-Zentren fälschlicherweise auf dem Festland liegen. Um dies zu verhindern, sendet das Backend eine Test-Anfrage an die Open-Meteo Marine API für die berechneten Koordinaten:
+   - Liefert die Marine API Daten zurück, liegt der Punkt im Wasser.
+   - Gibt die API einen HTTP-Status `404` zurück, handelt es sich um Land und das gesamte Cluster-Zentrum wird verworfen.
 
-4. Einen **Radius** definieren (z.B. 200 km für pelagische Arten wie Thunfisch)
-
-Das Ergebnis ist ein **Kreis pro Monat** – die saisonale Verbreitungszone. Die Verschiebung dieser Kreise über die Monate zeigt die grobe saisonale Wanderungsbewegung.
-
-> *Hinweis: OBIS-Daten sind opportunistische Sichtungen, keine systematischen Erhebungen. Deshalb sprechen wir bewusst von „saisonalen Verbreitungszonen" statt von „Migrationsrouten".*
+Das Ergebnis ist ein Set von **Kreisen (Zentroid + Radius) pro Monat**, die als saisonale Verbreitungszonen im In-Memory-Cache des `OBISService` vorgehalten werden.
 
 ---
 
-## 6. Mehrwert / Warum OceanGuard?
+## 7. REST-Erweiterungen (Sprint 5)
+
+Um das Projekt auf akademischem Spitzenniveau abzurunden, wurden in Sprint 5 fortgeschrittene REST-Constraints implementiert:
+
+### 7.1 Hypermedia as the Engine of Application State (HATEOAS)
+REST-Schnittstellen sollten selbstbeschreibend sein. Anstatt dass der Client Endpunkt-URLs hardcodet, liefert die API bei Abfragen Links (`_links`) zu verwandten Aktionen mit. 
+- In den Endpunkten `GET /species/` und `GET /species/{species_id}` wird für jede Art ein `_links`-Objekt serialisiert:
+  - `self`: Link zur Ressourceneinzelansicht (`GET /species/{species_id}`)
+  - `migration`: Link zur saisonalen Migrationszone (`GET /species/{species_id}/migration?month={month}`)
+  - `vessels`: Link zu Schiffen in dieser BBox (`GET /vessels/species/{species_id}`)
+  - `overlap`: Link zur Overlap-Score-Berechnung für diese Art (`GET /overlap?species_id={species_id}`)
+  - `alerts`: Link zu aktiven Warnungen dieser Art (`GET /alerts?species_id={species_id}`)
+
+Das Pydantic-Schema nutzt einen Alias, um den Python-Attributnamen `links` als `_links` im JSON-Response-Körper auszugeben.
+
+### 7.2 HTTP-Caching (ETag & Cache-Control)
+Zur Reduzierung von Serverlast und Bandbreite wurde ETag-basiertes Caching für semi-statische Daten implementiert (z. B. Artendetails und historische Migrationszonen, die sich selten ändern):
+- **Cache-Control:** Antworten von `GET /species` und `GET /species/{species_id}/migration` enthalten den Header `Cache-Control: public, max-age=86400` (Gültigkeit von 24 Stunden).
+- **ETag-Generierung:** Das Backend serialisiert die Antwortdaten deterministisch (sortierte Schlüssel) und erzeugt einen MD5-Hash des Bodys als ETag-Header (z. B. `ETag: W/"<hash>"`).
+- **If-None-Match Validierung:** Sendet der Client eine Folgeanfrage mit `If-None-Match: "<hash>"`, vergleicht das Backend diesen Wert mit dem aktuellen Daten-Hash. Stimmen sie überein, bricht die Verarbeitung ab und das Backend sendet ein leeres `304 Not Modified` Paket zurück.
+
+---
+
+## 8. Frontend-Architektur (Client)
+
+Der OceanGuard-Client ist als moderne Single-Page-Applikation (SPA) aufgebaut:
+
+### 8.1 Tech-Stack & Frameworks:
+- **Framework:** React mit TypeScript, gebuildet mittels Vite.
+- **Kartendarstellung:** Leaflet.js (via `react-leaflet`) zur Echtzeit-Visualisierung der Schiffspositionen und Migrations-Polygone auf einer interaktiven OpenStreetMap-Karte.
+- **State Management & Caching:** TanStack React Query zur Verwaltung und zum Caching von API-Anfragen an das Backend (z. B. `queryKey: ["migration-zones", currentMonth]`).
+- **Styling:** Vanilla CSS für ein maßgeschneidertes, hochperformantes UI.
+
+### 8.2 Core-Pages & Routing:
+- `/` (LandingPage): Übersichtliche Einstiegsseite mit Projektbeschreibung.
+- `/map` (MapPage): Die interaktive Hauptkarte, welche die AIS-Schiffstracks, die kreisförmigen Artenschutzzonen des aktuellen Monats und farbkodierte Gefahrenstufen (Kritisch 🔴, Warnung 🟡, Gering 🟢) visualisiert.
+- `/login` & `/register` (LoginPage, RegisterPage): Schnittstelle für Authentifizierung.
+- `/user` (UserProfilePage): Dashboard für registrierte Benutzer zur Verwaltung ihrer Favoriten (gespeicherte Fischarten und Bounding-Boxes) sowie zur Erstellung und zum Vergleich historischer Gefahren-Reports.
+- `/add-fish` (AddFishPage): Admin-Schnittstelle zur Erstellung und Aktualisierung von Fischarten-Profilen.
+
+### 8.3 Firebase Authentication Integration:
+- Der Client authentifiziert Benutzer direkt über das Firebase Auth SDK.
+- Nach erfolgreichem Login erhält der Client ein Firebase ID-Token (JWT).
+- Dieses Token wird an den Backend-Endpunkt `POST /auth/sync` gesendet, wodurch der Benutzer im lokalen SQLite-Datenbanksystem synchronisiert und mit entsprechenden Berechtigungsrollen (`guest`, `user`, `admin`) versehen wird.
+- Bei allen nachfolgenden geschützten API-Anfragen wird das Token im `Authorization: Bearer <token>` Header mitgesendet und vom Backend-Dependency-Injection-Guard verifiziert.
+
+---
+
+## 9. Mehrwert / Warum OceanGuard?
 
 1. **Datenkombination:** Keine der drei APIs allein beantwortet die Kernfrage – erst die Kombination erzeugt neues Wissen
 2. **Overlap-Score:** Ein eigener Algorithmus, der aus drei isolierten Datenquellen einen neuen, nicht existierenden Indikator berechnet
@@ -286,22 +365,22 @@ Das Ergebnis ist ein **Kreis pro Monat** – die saisonale Verbreitungszone. Die
 
 ---
 
-## 7. Fokus-Arten (MVP)
+## 10. Fokus-Arten (MVP)
 
-| Art | Wissenschaftl. Name | Region | Opt. Temp. | $T_{mitte}$ | $R$ |
-|---|---|---|---|---|---|
-| 🐟 Roter Thun | _Thunnus thynnus_ | Mittelmeer / Ostatlantik | 15–25°C | 20°C | 10°C |
-| 🐟 Atlantischer Kabeljau | _Gadus morhua_ | Nordsee / Nordatlantik | 2–10°C | 6°C | 9°C |
-| 🐟 Sardine | _Sardina pilchardus_ | Europ. Atlantikküste | 10–20°C | 15°C | 10°C |
-| 🐟 Schwertfisch | _Xiphias gladius_ | Mittelmeer / Atlantik | 18–28°C | 23°C | 10°C |
+| Art | Wissenschaftl. Name | Region | Opt. Temp. | $T_{mitte}$ (Optimum) | $R$ (Bereichs-Divisor) | Radius ($radius\_km$) |
+|---|---|---|---|---|---|---|
+| 🐟 Roter Thun | _Thunnus thynnus_ | Mittelmeer / Ostatlantik | 15–25°C | 22.0°C | 10.0°C | 200 km |
+| 🐟 Atlantischer Kabeljau | _Gadus morhua_ | Nordsee / Nordatlantik | 0–12°C | 6.0°C | 6.0°C | 100 km |
+| 🐟 Sardine | _Sardina pilchardus_ | Europ. Atlantikküste / Mittelmeer | 10–20°C | 15.0°C | 5.0°C | 50 km |
+| 🐟 Schwertfisch | _Xiphias gladius_ | Mittelmeer / Atlantik | 18–28°C | 23.0°C | 10.0°C | 150 km |
 
 **MVP-Start:** Roter Thun (beste Datendichte bei OBIS, hohe Schutzrelevanz).
 
 ---
 
-## 8. API-Tests 
+## 11. API-Tests 
 
-### 8.1 OBIS API – Basis-Test
+### 11.1 OBIS API – Basis-Test
 
 **Request:**
 
@@ -313,7 +392,7 @@ GET https://api.obis.org/v3/occurrence?scientificname=Thunnus%20thynnus&size=3
 
 Die API liefert insgesamt **10.862 Sichtungen** für Roter Thun (_Thunnus thynnus_) weltweit. Ohne Geografie-Filter kommen die Daten primär aus nordamerikanischen Gewässern (New York Bight, Florida East Coast, Gulf of Mexico). Die Response enthält alle Felder, die wir brauchen: `decimalLatitude`, `decimalLongitude`, `eventDate` und `scientificName`. Ein unerwarteter Bonus: OBIS liefert ein `sst`-Feld (Sea Surface Temperature) zum Zeitpunkt der Sichtung mit. Damit können wir unsere artspezifischen Temperaturbereiche validieren – alle drei zurückgegebenen Records hatten SST-Werte zwischen 16.5°C und 27.5°C, was zum bekannten Temperaturprofil des Roten Thuns passt. Auth wird keine benötigt.
 
-### 8.2 OBIS API – Mittelmeer-Filter
+### 11.2 OBIS API – Mittelmeer-Filter
 
 **Request:**
 
@@ -327,9 +406,9 @@ Mit dem WKT-Polygon-Filter auf das Mittelmeer-Gebiet liefert OBIS **836 Sichtung
 
 Eine wichtige Beobachtung zur Datenqualität: Nicht alle Records haben ein exaktes Datum. Manche enthalten nur ein Jahr (z.B. `"1964"`), andere einen Zeitraum (z.B. `"1973-06/1990-12"`). Beim Gruppieren nach Monat müssen wir Records ohne konkreten Monat entweder ignorieren oder gesondert behandeln.
 
-**Nutzung im Projekt:** Wir rufen alle Sichtungen einer Art im Mittelmeer ab, gruppieren sie nach Monat und berechnen daraus den Mittelpunkt + Radius für die saisonale Verbreitungszone. Der `geometry`-Parameter erlaubt uns, die Abfrage auf unsere Zielregion einzuschränken.
+**Nutzung im Projekt:** Wir rufen alle Sichtungen einer Art im Mittelmeer ab, gruppieren sie nach Monat und berechnen daraus den Mittelpunkt + Radius für die saisonale Verbreitungszone. Der `geometry`-Parameter erlaubt uns, die Abfrage auf unsere Zielregion einschränken.
 
-### 8.3 Open-Meteo Marine API – Wassertemperatur
+### 11.3 Open-Meteo Marine API – Wassertemperatur
 
 **Request:**
 
@@ -339,15 +418,15 @@ GET https://marine-api.open-meteo.com/v1/marine?latitude=38.0&longitude=15.0&hou
 
 **Ergebnis:** Erfolgreich
 
-Die API liefert stündliche Meeresbedingungen für den angefragten Punkt im zentralen Mittelmeer (Straße von Messina). Die Wassertemperatur lag am Testtag (27. März 2026) stabil bei **15.2–15.4°C** über den gesamten Tag. Das `wave\_height`-Feld war für diesen Punkt `null` – Wellendaten sind nicht an allen Koordinaten verfügbar, was für uns aber unkritisch ist, da wir primär die SST brauchen.
+Die API liefert stündliche Meeresbedingungen für den angefragten Point im zentralen Mittelmeer (Straße von Messina). Die Wassertemperatur lag am Testtag (27. März 2026) stabil bei **15.2–15.4°C** über den gesamten Tag. Das `wave\_height`-Feld war für diesen Punkt `null` – Wellendaten sind nicht an allen Koordinaten verfügbar, was für uns aber unkritisch ist, da wir primär die SST brauchen.
 
-Zur Validierung unserer Formel: Mit einer aktuellen SST von 15.4°C und den Parametern für Roten Thun (T_mitte = 20°C, R = 10°C) ergibt sich ein Temperatur-Faktor von T = max(0, 1 − |15.4 − 20| / 10) = **0.54**. Das ist plausibel – Ende März ist das Mittelmeer noch kühl, der T-Faktor liegt im mittleren Bereich. Im Sommer steigt die Temperatur und damit der Faktor.
+Zur Validierung unserer Formel: Mit einer aktuellen SST von 15.4°C und den Parametern für Roten Thun (T_mitte = 22°C, R = 10°C) ergibt sich ein Temperatur-Faktor von T = max(0, 1 − |15.4 − 22| / 10) = **0.34**. Das ist plausibel – Ende März ist das Mittelmeer noch kühl, der T-Faktor liegt im unteren bis mittleren Bereich. Im Sommer steigt die Temperatur und damit der Faktor.
 
 Da die SST über den Tag kaum schwankt, reicht eine Abfrage pro Tag und Region. Auth wird keine benötigt, die Generierungszeit lag bei 0.2ms.
 
 **Nutzung im Projekt:** Wenn unser Backend den Overlap-Score berechnet, fragt es für die Position des Schiffs die aktuelle SST bei Open-Meteo ab und berechnet daraus den Temperatur-Faktor.
 
-### 8.4 AISstream.io – Echtzeit-Schiffspositionen
+### 11.4 AISstream.io – Echtzeit-Schiffspositionen
 
 **Verbindung:**
 
@@ -380,4 +459,5 @@ Eine wichtige Entdeckung: Die API liefert ein Feld `NavigationalStatus`, wobei d
 **Nutzung im Projekt:** Unser Backend hält eine dauerhafte WebSocket-Verbindung zu AISstream und filtert auf die relevante BoundingBox. Eingehende Positionsdaten werden im Speicher gehalten und dem Frontend über unsere eigene REST-API bereitgestellt.
 
 ---
+
 

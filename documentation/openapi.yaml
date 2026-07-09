@@ -1,463 +1,14 @@
-components:
-  schemas:
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          title: Detail
-          type: array
-      title: HTTPValidationError
-      type: object
-    MarineResponse:
-      properties:
-        lat:
-          title: Lat
-          type: number
-        lng:
-          title: Lng
-          type: number
-        sea_surface_temperature:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Sea Surface Temperature
-      required:
-      - lat
-      - lng
-      title: MarineResponse
-      type: object
-    RoleUpdate:
-      properties:
-        role:
-          enum:
-          - guest
-          - user
-          - admin
-          title: Role
-          type: string
-      required:
-      - role
-      title: RoleUpdate
-      type: object
-    SpeciesCreate:
-      properties:
-        active:
-          default: true
-          title: Active
-          type: boolean
-        common_name:
-          title: Common Name
-          type: string
-        description:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Description
-        id:
-          title: Id
-          type: string
-        radius_km:
-          default: 200
-          title: Radius Km
-          type: integer
-        region:
-          title: Region
-          type: string
-        scientific_name:
-          title: Scientific Name
-          type: string
-        temp_max:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Max
-        temp_mid:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Mid
-        temp_min:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Min
-        temp_range:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Range
-      required:
-      - common_name
-      - scientific_name
-      - region
-      - id
-      title: SpeciesCreate
-      type: object
-    SpeciesPatch:
-      properties:
-        active:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Active
-        common_name:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Common Name
-        description:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Description
-        radius_km:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Radius Km
-        region:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Region
-        scientific_name:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Scientific Name
-        temp_max:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Max
-        temp_mid:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Mid
-        temp_min:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Min
-        temp_range:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Temp Range
-      title: SpeciesPatch
-      type: object
-    SyncRequest:
-      properties:
-        name:
-          title: Name
-          type: string
-      required:
-      - name
-      title: SyncRequest
-      type: object
-    UserResponse:
-      properties:
-        created_at:
-          format: date-time
-          title: Created At
-          type: string
-        email:
-          title: Email
-          type: string
-        firebase_uid:
-          title: Firebase Uid
-          type: string
-        id:
-          title: Id
-          type: integer
-        name:
-          title: Name
-          type: string
-        role:
-          title: Role
-          type: string
-      required:
-      - id
-      - firebase_uid
-      - email
-      - name
-      - role
-      - created_at
-      title: UserResponse
-      type: object
-    ValidationError:
-      properties:
-        ctx:
-          title: Context
-          type: object
-        input:
-          title: Input
-        loc:
-          items:
-            anyOf:
-            - type: string
-            - type: integer
-          title: Location
-          type: array
-        msg:
-          title: Message
-          type: string
-        type:
-          title: Error Type
-          type: string
-      required:
-      - loc
-      - msg
-      - type
-      title: ValidationError
-      type: object
-    VesselListResponse:
-      properties:
-        count:
-          title: Count
-          type: integer
-        vessels:
-          items:
-            $ref: '#/components/schemas/VesselResponse'
-          title: Vessels
-          type: array
-      required:
-      - vessels
-      - count
-      title: VesselListResponse
-      type: object
-    VesselResponse:
-      properties:
-        cog:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Cog
-        last_update:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Last Update
-        lat:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Lat
-        lng:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Lng
-        mmsi:
-          title: Mmsi
-          type: integer
-        name:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Name
-        sog:
-          anyOf:
-          - type: number
-          - type: 'null'
-          title: Sog
-      required:
-      - mmsi
-      title: VesselResponse
-      type: object
-  securitySchemes:
-    HTTPBearer:
-      scheme: bearer
-      type: http
-info:
-  description: Backend for monitoring maritime conservation zones
-  title: OceanGuard API
-  version: 1.0.0
 openapi: 3.1.0
+info:
+  title: OceanGuard API
+  description: Backend for monitoring maritime conservation zones
+  version: 1.0.0
 paths:
-  /:
-    get:
-      operationId: root__get
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Root
-      tags:
-      - Root
-  /admin/system:
-    get:
-      description: 'Zeigt User-Anzahl, aktive Schiffe, gecachte Zonen, AIS-Status
-        und Uptime. **Rolle: Admin.**'
-      operationId: system_status_admin_system_get
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Systemstatus
-      security:
-      - HTTPBearer: []
-      summary: Systemstatus abrufen
-      tags:
-      - Admin
-  /admin/users:
-    get:
-      description: '**Rolle: Admin.**'
-      operationId: list_users_admin_users_get
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/UserResponse'
-                title: Response List Users Admin Users Get
-                type: array
-          description: User-Liste
-      security:
-      - HTTPBearer: []
-      summary: Alle User auflisten
-      tags:
-      - Admin
-  /admin/users/{user_id}:
-    delete:
-      description: 'Admin kann sich nicht selbst löschen. **Rolle: Admin.**'
-      operationId: delete_user_admin_users__user_id__delete
-      parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          title: User Id
-          type: integer
-      responses:
-        '204':
-          description: User gelöscht
-        '403':
-          description: Selbstlöschung nicht erlaubt
-        '404':
-          description: User nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      security:
-      - HTTPBearer: []
-      summary: User löschen
-      tags:
-      - Admin
-  /admin/users/{user_id}/role:
-    patch:
-      description: 'Erlaubte Rollen: guest, user, admin. **Rolle: Admin.**'
-      operationId: change_role_admin_users__user_id__role_patch
-      parameters:
-      - in: path
-        name: user_id
-        required: true
-        schema:
-          title: User Id
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RoleUpdate'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-          description: Rolle geändert
-        '400':
-          description: Ungültige Rolle
-        '404':
-          description: User nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      security:
-      - HTTPBearer: []
-      summary: User-Rolle ändern
-      tags:
-      - Admin
-  /alerts:
-    get:
-      description: 'Gibt nur Schiffe mit Score >= 0.4 zurück (WARNUNG + KRITISCH).
-        Parameter: species (Pflicht). **Rolle: Gast.**'
-      operationId: get_active_threat_alerts_alerts_get
-      parameters:
-      - description: The species ID (e.g., 'sardina-pilchardus')
-        in: query
-        name: species_id
-        required: true
-        schema:
-          description: The species ID (e.g., 'sardina-pilchardus')
-          title: Species Id
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Alert-Liste (kann leer sein)
-        '404':
-          description: Art nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Aktive Warnungen abrufen
-      tags:
-      - Threat Alerts
-      - Threat Alerts
-  /auth/logout:
-    post:
-      description: 'Loggt den User aus. **Rolle: User/Admin.**'
-      operationId: logout_auth_logout_post
-      responses:
-        '204':
-          description: Erfolgreich ausgeloggt
-        '401':
-          description: Nicht eingeloggt
-      security:
-      - HTTPBearer: []
-      summary: Logout
-      tags:
-      - Auth
-  /auth/me:
-    get:
-      description: 'Gibt den eingeloggten User zurück. **Rolle: User/Admin.**'
-      operationId: get_me_auth_me_get
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-          description: User-Daten
-        '401':
-          description: Nicht eingeloggt
-      security:
-      - HTTPBearer: []
-      summary: Aktuellen User abrufen
-      tags:
-      - Auth
   /auth/sync:
     post:
+      tags:
+      - Auth
+      summary: Firebase-User synchronisieren
       description: 'Verifiziert Firebase-Token und erstellt/aktualisiert User in lokaler
         DB. **Rolle: Alle mit gültigem Token.**'
       operationId: sync_user_auth_sync_post
@@ -469,160 +20,67 @@ paths:
         required: true
       responses:
         '200':
+          description: User existiert bereits
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
-          description: User existiert bereits
         '201':
           description: Neuer User erstellt
         '401':
           description: Token ungültig
         '422':
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
       security:
       - HTTPBearer: []
-      summary: Firebase-User synchronisieren
+  /auth/me:
+    get:
       tags:
       - Auth
-  /marine-conditions:
-    get:
-      description: 'SST und Wellenhöhe für eine Koordinate. Parameter: lat, lng. **Rolle:
-        Gast.**'
-      operationId: marine_conditions_marine_conditions_get
-      parameters:
-      - in: query
-        name: lat
-        required: true
-        schema:
-          title: Lat
-          type: number
-      - in: query
-        name: lng
-        required: true
-        schema:
-          title: Lng
-          type: number
+      summary: Aktuellen User abrufen
+      description: 'Gibt den eingeloggten User zurück. **Rolle: User/Admin.**'
+      operationId: get_me_auth_me_get
       responses:
         '200':
+          description: User-Daten
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MarineResponse'
-          description: Marine-Daten
-        '400':
-          description: Fehlende Koordinaten
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Marine-Bedingungen abrufen
-      tags:
-      - Marine
-  /overlap:
-    get:
-      description: 'Berechnet den Overlap-Score für eine Art und einen Monat. Parameter:
-        species (Pflicht), month (Optional, Default=aktueller Monat). **Rolle: Gast.**'
-      operationId: get_overlaps_overlap_get
-      parameters:
-      - description: The species ID (e.g., 'sardina-pilchardus')
-        in: query
-        name: species_id
-        required: true
-        schema:
-          description: The species ID (e.g., 'sardina-pilchardus')
-          title: Species Id
-          type: string
-      - description: Month context (1-12). Defaults to current month.
-        in: query
-        name: month
-        required: false
-        schema:
-          anyOf:
-          - maximum: 12
-            minimum: 1
-            type: integer
-          - type: 'null'
-          description: Month context (1-12). Defaults to current month.
-          title: Month
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Overlap-Ergebnis mit Scores und Zone
-        '400':
-          description: Ungültiger Monat
-        '404':
-          description: Art oder Zone nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Overlap-Score berechnen
-      tags:
-      - Overlap Analysis
-      - Overlap Analysis
-  /overlap/{mmsi}:
-    get:
-      description: 'Score eines bestimmten Schiffs gegen eine Art. Parameter: species
-        (Pflicht). **Rolle: Gast.**'
-      operationId: get_overlap_for_vessel_overlap__mmsi__get
-      parameters:
-      - in: path
-        name: mmsi
-        required: true
-        schema:
-          title: Mmsi
-          type: integer
-      - description: The species ID (e.g., 'sardina-pilchardus')
-        in: query
-        name: species_id
-        required: true
-        schema:
-          description: The species ID (e.g., 'sardina-pilchardus')
-          title: Species Id
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Einzelner Vessel-Score
-        '404':
-          description: Schiff oder Art nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Overlap-Score für einzelnes Schiff
-      tags:
-      - Overlap Analysis
-      - Overlap Analysis
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Nicht eingeloggt
+      security:
+      - HTTPBearer: []
   /species/:
     get:
-      description: 'Gibt alle aktiven Arten zurück. **Rolle: Gast (kein Login nötig).**'
+      tags:
+      - Species
+      summary: Alle aktiven Fischarten abrufen
+      description: 'Gibt alle aktiven Arten mit relativen HATEOAS-Links zurück. Unterstützt
+        ETag Caching. **Rolle: Gast.**'
       operationId: get_all_species_species__get
       responses:
         '200':
+          description: Liste aller aktiven Arten mit HATEOAS-Links und Caching-Headern
+          headers:
+            ETag:
+              description: Weak entity tag for conditional requests (e.g., W/"abc123...")
+            Cache-Control:
+              description: public, max-age=86400 (cacheable for 24 hours)
           content:
             application/json:
               schema: {}
-          description: Liste aller aktiven Arten
-      summary: Alle aktiven Fischarten abrufen
+        '304':
+          description: Not Modified - client can use cached version (If-None-Match
+            matched)
+    post:
       tags:
       - Species
-    post:
+      summary: Neue Fischart anlegen
       description: 'Erstellt eine neue Art. **Rolle: Admin.**'
       operationId: create_species_species__post
       requestBody:
@@ -633,261 +91,1243 @@ paths:
         required: true
       responses:
         '201':
+          description: Art erstellt
           content:
             application/json:
               schema: {}
-          description: Art erstellt
         '409':
           description: Art existiert bereits
         '422':
           description: Validierungsfehler
       security:
       - HTTPBearer: []
-      summary: Neue Fischart anlegen
+  /species/{species_id}/migration:
+    get:
       tags:
       - Species
-  /species/{species_id}:
-    delete:
-      description: 'Setzt active=False. Daten bleiben erhalten. **Rolle: Admin.**'
-      operationId: delete_species_species__species_id__delete
+      summary: Migrationszonen abrufen
+      description: 'Gibt die berechnete Migrationszone für einen Monat zurück. Unterstützt
+        ETag Caching. **Rolle: Gast.**'
+      operationId: get_migration_zone_species__species_id__migration_get
       parameters:
-      - in: path
-        name: species_id
+      - name: species_id
+        in: path
         required: true
         schema:
-          title: Species Id
           type: string
+          title: Species Id
+      - name: month
+        in: query
+        required: true
+        schema:
+          type: integer
+          maximum: 12
+          minimum: 1
+          description: Monat (1–12)
+          title: Month
+        description: Monat (1–12)
+      responses:
+        '200':
+          description: GeoJSON Feature mit Caching-Headern
+          content:
+            application/json:
+              schema: {}
+          headers:
+            ETag:
+              description: Weak entity tag for conditional requests (e.g., W/"abc123...")
+            Cache-Control:
+              description: public, max-age=86400 (cacheable for 24 hours)
+        '304':
+          description: Not Modified - client can use cached version (If-None-Match
+            matched)
+        '400':
+          description: Ungültiger Monat
+        '404':
+          description: Art nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /species/{species_id}:
+    get:
+      tags:
+      - Species
+      summary: Einzelne Fischart abrufen
+      description: 'Gibt Details einer Art mit relativen HATEOAS-Links zurück. **Rolle:
+        Gast.**'
+      operationId: get_species_by_id_species__species_id__get
+      parameters:
+      - name: species_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Species Id
+      responses:
+        '200':
+          description: Art-Details mit HATEOAS-Links
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: Art nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Species
+      summary: Fischart vollständig aktualisieren
+      description: 'Ersetzt alle Felder einer Art. **Rolle: Admin.**'
+      operationId: update_species_species__species_id__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: species_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Species Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeciesCreate'
+      responses:
+        '200':
+          description: Art aktualisiert
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: Art nicht gefunden
+        '422':
+          description: Validierungsfehler
+    patch:
+      tags:
+      - Species
+      summary: Fischart teilweise aktualisieren
+      description: 'Aktualisiert einzelne Felder. **Rolle: Admin.**'
+      operationId: patch_species_species__species_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: species_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Species Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeciesPatch'
+      responses:
+        '200':
+          description: Art aktualisiert
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: Art nicht gefunden
+        '422':
+          description: Validierungsfehler
+    delete:
+      tags:
+      - Species
+      summary: Fischart deaktivieren (Soft-Delete)
+      description: 'Setzt active=False. Daten bleiben erhalten. **Rolle: Admin.**'
+      operationId: delete_species_species__species_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: species_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Species Id
       responses:
         '204':
           description: Deaktiviert
         '404':
           description: Art nicht gefunden
         '422':
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      security:
-      - HTTPBearer: []
-      summary: Fischart deaktivieren (Soft-Delete)
-      tags:
-      - Species
+  /marine-conditions:
     get:
-      description: 'Gibt Details einer Art zurück. **Rolle: Gast.**'
-      operationId: get_species_by_id_species__species_id__get
-      parameters:
-      - in: path
-        name: species_id
-        required: true
-        schema:
-          title: Species Id
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Art-Details
-        '404':
-          description: Art nicht gefunden
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Einzelne Fischart abrufen
       tags:
-      - Species
-    patch:
-      description: 'Aktualisiert einzelne Felder. **Rolle: Admin.**'
-      operationId: patch_species_species__species_id__patch
-      parameters:
-      - in: path
-        name: species_id
-        required: true
-        schema:
-          title: Species Id
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SpeciesPatch'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Art aktualisiert
-        '404':
-          description: Art nicht gefunden
-        '422':
-          description: Validierungsfehler
-      security:
-      - HTTPBearer: []
-      summary: Fischart teilweise aktualisieren
-      tags:
-      - Species
-    put:
-      description: 'Ersetzt alle Felder einer Art. **Rolle: Admin.**'
-      operationId: update_species_species__species_id__put
-      parameters:
-      - in: path
-        name: species_id
-        required: true
-        schema:
-          title: Species Id
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SpeciesCreate'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Art aktualisiert
-        '404':
-          description: Art nicht gefunden
-        '422':
-          description: Validierungsfehler
-      security:
-      - HTTPBearer: []
-      summary: Fischart vollständig aktualisieren
-      tags:
-      - Species
-  /species/{species_id}/migration:
-    get:
-      description: 'Gibt die berechnete Migrationszone für einen Monat zurück. **Rolle:
+      - Marine
+      summary: Marine-Bedingungen abrufen
+      description: 'SST und Wellenhöhe für eine Koordinate. Parameter: lat, lng. **Rolle:
         Gast.**'
-      operationId: get_migration_zone_species__species_id__migration_get
+      operationId: marine_conditions_marine_conditions_get
       parameters:
-      - in: path
-        name: species_id
-        required: true
-        schema:
-          title: Species Id
-          type: string
-      - description: Monat (1–12)
+      - name: lat
         in: query
-        name: month
         required: true
         schema:
-          description: Monat (1–12)
-          maximum: 12
-          minimum: 1
-          title: Month
-          type: integer
+          type: number
+          title: Lat
+      - name: lng
+        in: query
+        required: true
+        schema:
+          type: number
+          title: Lng
       responses:
         '200':
+          description: Marine-Daten
           content:
             application/json:
-              schema: {}
-          description: GeoJSON Feature
+              schema:
+                $ref: '#/components/schemas/MarineResponse'
         '400':
-          description: Ungültiger Monat
-        '404':
-          description: Art nicht gefunden
+          description: Fehlende Koordinaten
         '422':
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Migrationszonen abrufen
-      tags:
-      - Species
   /vessels:
     get:
+      tags:
+      - Vessels
+      summary: Schiffe auflisten
       description: 'Optional mit bbox-Filter (lat1,lng1,lat2,lng2). **Rolle: Gast.**'
       operationId: get_vessels_vessels_get
+      parameters:
+      - name: bbox
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'BBox boundaries: min_lat,min_lng,max_lat,max_lng'
+          title: Bbox
+        description: 'BBox boundaries: min_lat,min_lng,max_lat,max_lng'
       responses:
         '200':
+          description: Schiffsliste
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VesselListResponse'
-          description: Schiffsliste
         '400':
           description: Ungültige BBox
-      summary: Schiffe auflisten
-      tags:
-      - Vessels
-  /vessels/species/{species_id}:
-    get:
-      description: 'Gibt alle aktuell getrackten Schiffe innerhalb der Verbreitungszone
-        einer Fischart zurück. **Rolle: Gast.**'
-      operationId: get_species_vessels_vessels_species__species_id__get
-      parameters:
-      - in: path
-        name: species_id
-        required: true
-        schema:
-          title: Species Id
-          type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Liste der Schiffe
-        '404':
-          description: Fischart nicht gefunden
         '422':
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Schiffe in Verbreitungszone abrufen
+  /vessels/species/{species_id}:
+    get:
       tags:
       - Vessels
+      summary: Schiffe in Verbreitungszone abrufen
+      description: 'Gibt alle aktuell getrackten Schiffe innerhalb der Verbreitungszone
+        einer Fischart zurück. **Rolle: Gast.**'
+      operationId: get_species_vessels_vessels_species__species_id__get
+      parameters:
+      - name: species_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Species Id
+      responses:
+        '200':
+          description: Liste der Schiffe
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: Fischart nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /vessels/status:
     get:
+      tags:
+      - Vessels
+      summary: AIS-Status abrufen
       description: 'Gibt den aktuellen Verbindungsstatus des AIS-Streams zurück. **Rolle:
         Gast.**'
       operationId: ais_status_vessels_status_get
       responses:
         '200':
+          description: AIS-Verbindungsstatus
           content:
             application/json:
               schema: {}
-          description: AIS-Verbindungsstatus
-      summary: AIS-Status abrufen
-      tags:
-      - Vessels
   /vessels/{mmsi}:
     get:
+      tags:
+      - Vessels
+      summary: Einzelnes Schiff abrufen
       description: 'Suche nach MMSI-Nummer. **Rolle: Gast.**'
       operationId: get_vessel_vessels__mmsi__get
       parameters:
-      - in: path
-        name: mmsi
+      - name: mmsi
+        in: path
         required: true
         schema:
-          title: Mmsi
           type: integer
+          title: Mmsi
       responses:
         '200':
+          description: Schiffsdaten
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VesselResponse'
-          description: Schiffsdaten
         '404':
           description: Schiff nicht gefunden
         '422':
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Einzelnes Schiff abrufen
+  /overlap:
+    get:
       tags:
-      - Vessels
+      - Overlap Analysis
+      - Overlap Analysis
+      summary: Overlap-Score berechnen
+      description: 'Berechnet den Overlap-Score für eine Art und einen Monat. Parameter:
+        species (Pflicht), month (Optional, Default=aktueller Monat). **Rolle: Gast.**'
+      operationId: get_overlaps_overlap_get
+      parameters:
+      - name: species_id
+        in: query
+        required: true
+        schema:
+          type: string
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+        description: The species ID (e.g., 'sardina-pilchardus')
+      - name: month
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            maximum: 12
+            minimum: 1
+          - type: 'null'
+          description: Month context (1-12). Defaults to current month.
+          title: Month
+        description: Month context (1-12). Defaults to current month.
+      responses:
+        '200':
+          description: Overlap-Ergebnis mit Scores und Zone
+          content:
+            application/json:
+              schema: {}
+        '400':
+          description: Ungültiger Monat
+        '404':
+          description: Art oder Zone nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /overlap/{mmsi}:
+    get:
+      tags:
+      - Overlap Analysis
+      - Overlap Analysis
+      summary: Overlap-Score für einzelnes Schiff
+      description: 'Score eines bestimmten Schiffs gegen eine Art. Parameter: species
+        (Pflicht). **Rolle: Gast.**'
+      operationId: get_overlap_for_vessel_overlap__mmsi__get
+      parameters:
+      - name: mmsi
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Mmsi
+      - name: species_id
+        in: query
+        required: true
+        schema:
+          type: string
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+        description: The species ID (e.g., 'sardina-pilchardus')
+      responses:
+        '200':
+          description: Einzelner Vessel-Score
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: Schiff oder Art nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /alerts:
+    get:
+      tags:
+      - Threat Alerts
+      - Threat Alerts
+      summary: Aktive Warnungen abrufen
+      description: 'Gibt nur Schiffe mit Score >= 0.4 zurück (WARNUNG + KRITISCH).
+        Parameter: species (Pflicht). **Rolle: Gast.**'
+      operationId: get_active_threat_alerts_alerts_get
+      parameters:
+      - name: species_id
+        in: query
+        required: true
+        schema:
+          type: string
+          description: The species ID (e.g., 'sardina-pilchardus')
+          title: Species Id
+        description: The species ID (e.g., 'sardina-pilchardus')
+      responses:
+        '200':
+          description: Alert-Liste (kann leer sein)
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: Art nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/users:
+    get:
+      tags:
+      - Admin
+      summary: Alle User auflisten
+      description: '**Rolle: Admin.**'
+      operationId: list_users_admin_users_get
+      responses:
+        '200':
+          description: User-Liste
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+                type: array
+                title: Response List Users Admin Users Get
+      security:
+      - HTTPBearer: []
+  /admin/users/{user_id}:
+    delete:
+      tags:
+      - Admin
+      summary: User löschen
+      description: 'Admin kann sich nicht selbst löschen. **Rolle: Admin.**'
+      operationId: delete_user_admin_users__user_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      responses:
+        '204':
+          description: User gelöscht
+        '403':
+          description: Selbstlöschung nicht erlaubt
+        '404':
+          description: User nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/users/{user_id}/role:
+    patch:
+      tags:
+      - Admin
+      summary: User-Rolle ändern
+      description: 'Erlaubte Rollen: guest, user, admin. **Rolle: Admin.**'
+      operationId: change_role_admin_users__user_id__role_patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+      responses:
+        '200':
+          description: Rolle geändert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Ungültige Rolle
+        '404':
+          description: User nicht gefunden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/system:
+    get:
+      tags:
+      - Admin
+      summary: Systemstatus abrufen
+      description: 'Zeigt User-Anzahl, aktive Schiffe, gecachte Zonen, AIS-Status
+        und Uptime. **Rolle: Admin.**'
+      operationId: system_status_admin_system_get
+      responses:
+        '200':
+          description: Systemstatus
+          content:
+            application/json:
+              schema: {}
+      security:
+      - HTTPBearer: []
+  /favorites/species:
+    get:
+      tags:
+      - Favorites
+      summary: Get Favorite Species
+      operationId: get_favorite_species_favorites_species_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/FavoriteSpeciesResponse'
+                type: array
+                title: Response Get Favorite Species Favorites Species Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - Favorites
+      summary: Add Favorite Species
+      operationId: add_favorite_species_favorites_species_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavoriteSpeciesCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteSpeciesResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /favorites/species/{species_id}:
+    delete:
+      tags:
+      - Favorites
+      summary: Remove Favorite Species
+      operationId: remove_favorite_species_favorites_species__species_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: species_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Species Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /favorites/regions:
+    get:
+      tags:
+      - Favorites
+      summary: Get Favorite Regions
+      operationId: get_favorite_regions_favorites_regions_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/FavoriteRegionResponse'
+                type: array
+                title: Response Get Favorite Regions Favorites Regions Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - Favorites
+      summary: Add Favorite Region
+      operationId: add_favorite_region_favorites_regions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavoriteRegionCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteRegionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /favorites/regions/{region_id}:
+    delete:
+      tags:
+      - Favorites
+      summary: Remove Favorite Region
+      operationId: remove_favorite_region_favorites_regions__region_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: region_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Region Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reports:
+    get:
+      tags:
+      - Reports
+      summary: Get Reports
+      operationId: get_reports_reports_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ReportResponse'
+                type: array
+                title: Response Get Reports Reports Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - Reports
+      summary: Create Report
+      operationId: create_report_reports_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /reports/compare:
+    get:
+      tags:
+      - Reports
+      summary: Compare Reports
+      operationId: compare_reports_reports_compare_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: ids
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Ids
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /reports/{report_id}:
+    get:
+      tags:
+      - Reports
+      summary: Get Report
+      operationId: get_report_reports__report_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Report Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Reports
+      summary: Delete Report
+      operationId: delete_report_reports__report_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Report Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /:
+    get:
+      tags:
+      - Root
+      summary: Root
+      operationId: root__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    FavoriteRegionCreate:
+      properties:
+        name:
+          type: string
+          title: Name
+        bbox:
+          items:
+            type: number
+          type: array
+          title: Bbox
+      type: object
+      required:
+      - name
+      - bbox
+      title: FavoriteRegionCreate
+    FavoriteRegionResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        name:
+          type: string
+          title: Name
+        user_id:
+          type: integer
+          title: User Id
+        bbox:
+          items:
+            type: number
+          type: array
+          title: Bbox
+      type: object
+      required:
+      - id
+      - name
+      - user_id
+      - bbox
+      title: FavoriteRegionResponse
+    FavoriteSpeciesCreate:
+      properties:
+        species_id:
+          type: string
+          title: Species Id
+      type: object
+      required:
+      - species_id
+      title: FavoriteSpeciesCreate
+    FavoriteSpeciesResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        species_id:
+          type: string
+          title: Species Id
+        user_id:
+          type: integer
+          title: User Id
+      type: object
+      required:
+      - id
+      - species_id
+      - user_id
+      title: FavoriteSpeciesResponse
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    MarineResponse:
+      properties:
+        lat:
+          type: number
+          title: Lat
+        lng:
+          type: number
+          title: Lng
+        sea_surface_temperature:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Sea Surface Temperature
+      type: object
+      required:
+      - lat
+      - lng
+      title: MarineResponse
+    ReportCreate:
+      properties:
+        species_id:
+          type: string
+          title: Species Id
+        month:
+          type: integer
+          title: Month
+        bbox:
+          items:
+            type: number
+          type: array
+          title: Bbox
+      type: object
+      required:
+      - species_id
+      - month
+      - bbox
+      title: ReportCreate
+    ReportResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        user_id:
+          type: integer
+          title: User Id
+        species_id:
+          type: string
+          title: Species Id
+        species_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Species Name
+        month:
+          type: integer
+          title: Month
+        bbox:
+          items:
+            type: number
+          type: array
+          title: Bbox
+        sea_surface_temp:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Sea Surface Temp
+        vessel_count:
+          type: integer
+          title: Vessel Count
+        avg_score:
+          type: number
+          title: Avg Score
+        max_score:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Max Score
+        snapshot:
+          additionalProperties: true
+          type: object
+          title: Snapshot
+        created_at:
+          title: Created At
+      type: object
+      required:
+      - id
+      - user_id
+      - species_id
+      - month
+      - bbox
+      - vessel_count
+      - avg_score
+      - snapshot
+      - created_at
+      title: ReportResponse
+    RoleUpdate:
+      properties:
+        role:
+          type: string
+          enum:
+          - guest
+          - user
+          - admin
+          title: Role
+      type: object
+      required:
+      - role
+      title: RoleUpdate
+    SpeciesCreate:
+      properties:
+        common_name:
+          type: string
+          title: Common Name
+        scientific_name:
+          type: string
+          title: Scientific Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        region:
+          type: string
+          title: Region
+        temp_min:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Min
+        temp_max:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Max
+        temp_mid:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Mid
+        temp_range:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Range
+        radius_km:
+          type: integer
+          title: Radius Km
+          default: 200
+        active:
+          type: boolean
+          title: Active
+          default: true
+        id:
+          type: string
+          title: Id
+      type: object
+      required:
+      - common_name
+      - scientific_name
+      - region
+      - id
+      title: SpeciesCreate
+    SpeciesPatch:
+      properties:
+        common_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Common Name
+        scientific_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Scientific Name
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        region:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Region
+        temp_min:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Min
+        temp_max:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Max
+        temp_mid:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Mid
+        temp_range:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temp Range
+        radius_km:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Radius Km
+        active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Active
+      type: object
+      title: SpeciesPatch
+    SyncRequest:
+      properties:
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - name
+      title: SyncRequest
+    UserResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        firebase_uid:
+          type: string
+          title: Firebase Uid
+        email:
+          type: string
+          title: Email
+        name:
+          type: string
+          title: Name
+        role:
+          type: string
+          title: Role
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - firebase_uid
+      - email
+      - name
+      - role
+      - created_at
+      title: UserResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VesselListResponse:
+      properties:
+        vessels:
+          items:
+            $ref: '#/components/schemas/VesselResponse'
+          type: array
+          title: Vessels
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+      - vessels
+      - count
+      title: VesselListResponse
+    VesselResponse:
+      properties:
+        mmsi:
+          type: integer
+          title: Mmsi
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        shiptype:
+          anyOf:
+          - type: integer
+          - type: string
+          - type: 'null'
+          title: Shiptype
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+        is_public:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Public
+        classification_source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Classification Source
+        lat:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lat
+        lng:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Lng
+        sog:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Sog
+        cog:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Cog
+        last_update:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Update
+      type: object
+      required:
+      - mmsi
+      title: VesselResponse
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
