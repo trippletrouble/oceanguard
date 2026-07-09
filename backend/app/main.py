@@ -97,11 +97,3 @@ app.include_router(alerts.router, tags=["Threat Alerts"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(favorites.router, prefix="/favorites", tags=["Favorites"])
 app.include_router(reports.router, prefix="/reports", tags=["Reports"])
-
-
-@app.get("/", tags=["Root"])
-async def root():
-    return {
-        "status": "online",
-        "message": "OceanGuard API is running smoothly."
-    }
